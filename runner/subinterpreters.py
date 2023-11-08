@@ -1,14 +1,29 @@
 import os
-from concurrent.futures import ThreadPoolExecutor, wait
+from concurrent.futures import Future, ThreadPoolExecutor
 from functools import partial
 from textwrap import dedent
+from threading import current_thread
 from typing import Any, Callable
 
 import _xxsubinterpreters as interpreters
 
 import config
 from runner.interface import RunnerInterface
-from runner.threads import thread_callback
+
+
+def subinterpreter_callback(
+        callback: Callable[[int, Any], None],
+        r,
+        future: Future
+    ) -> None:
+    if future.exception():
+        print(f'Exception: {future.exception()}')
+
+    with os.fdopen(r) as r_pipe:
+        result = int(r_pipe.read())
+    
+    thread_id = current_thread().getName()[-1]
+    callback(thread_id, result)
 
 
 class RunnerSubinterpreters(RunnerInterface):
@@ -27,14 +42,13 @@ class RunnerSubinterpreters(RunnerInterface):
             interpreters.create()
             for _ in range(config.NUMBER_OF_JOBS)
         ]
-        tasks = []
 
         with ThreadPoolExecutor(self._no_workers) as executor:
             for _callable_index in range(config.NUMBER_OF_JOBS):
                 _subinterpreter_id = subinterpreter_ids[_callable_index]
-
-                def run(subinterpreter_id: int, callable_index: int) -> int:
-                    r, w = os.pipe()
+                r, _w = os.pipe()
+            
+                def run(subinterpreter_id: int, callable_index: int, w) -> int:
                     interpreters.run_string(
                         subinterpreter_id,
                         dedent(f"""
@@ -42,26 +56,21 @@ class RunnerSubinterpreters(RunnerInterface):
                         import sys
                         sys.path.append(os.getcwd())
 
-                        from job.callables import callables_list
+                        from config import CALLABLES_LIST
 
-                        result = callables_list[{callable_index}]()
+                        result = CALLABLES_LIST[{callable_index}]()
 
                         with open({w}, 'w', encoding="utf-8") as w_pipe:
                             w_pipe.write(str(result))
                         """)
                     )
-
-                    with os.fdopen(r) as r_pipe:
-                        return int(r_pipe.read())
                 
-                task = executor.submit(partial(run, _subinterpreter_id, _callable_index))
+                task = executor.submit(partial(run, _subinterpreter_id, _callable_index, _w))
                 task.add_done_callback(
                     partial(
-                        thread_callback, callback
+                        subinterpreter_callback, callback, r
                     )
                 )
-                tasks.append(task)
 
             callback()
             print('Waiting for tasks to complete...')
-            wait(tasks)

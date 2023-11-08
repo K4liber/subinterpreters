@@ -1,9 +1,9 @@
-from concurrent.futures import Future, ThreadPoolExecutor, wait
+from concurrent.futures import Future, ThreadPoolExecutor
 from functools import partial
 from threading import current_thread
 from typing import Any, Callable
 
-from job.callables import callables_list
+from config import CALLABLES_LIST
 from runner.interface import RunnerInterface
 
 
@@ -30,19 +30,14 @@ class RunnerThreads(RunnerInterface):
         callback: Callable[[int, Any], Any]
     ) -> None:
         print(f'Running with {self._no_workers} workers.')
-        tasks = []
-
         with ThreadPoolExecutor(self._no_workers) as executor:
-            # call a function on each item in a list and handle results
-            for callable in callables_list:
+            for callable in CALLABLES_LIST:
                 task = executor.submit(callable)
                 task.add_done_callback(
                     partial(
                         thread_callback, callback
                     )
                 )
-                tasks.append(task)
 
             callback()
             print('Waiting for tasks to complete...')
-            wait(tasks)

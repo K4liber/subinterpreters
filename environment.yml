@@ -5,6 +5,5 @@ channels:
   - conda-forge
 
 dependencies:
-  - mamba
   - python=3.12.0
-  - PyQt5
+  - pyqt=5

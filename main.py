@@ -1,31 +1,24 @@
-from functools import partial
-from typing import Any
-from runner.factory import get_runner
 import sys
+import time
+from typing import Any
 
-runner_type = sys.argv[1].upper()
+from runner.factory import RUNNER_TYPE, get_runner
+
+runner_type = sys.argv[1].upper() if len(sys.argv) > 1 else RUNNER_TYPE.SUBINTERPRETER
 runner = get_runner(runner_type=runner_type)
 
 
-def fibonacci(n: int) -> int:
-    if n < 0:
-        raise ValueError("Incorrect input")
-    elif n == 0:
-        return 0
-    elif n == 1 or n == 2:
-        return 1
-    else:
-        return fibonacci(n-1) + fibonacci(n-2)
+def callback(
+        worker_id: int | None = None,
+        result: Any = None
+    ) -> None:
+    if worker_id:
+        print(f'Worker id: {worker_id}, result: {result}')
 
 
-tasks = [partial(fibonacci, 30) for _ in range(40)]
-
-
-def callback(worker_id: int, result: Any) -> None:
-    print(f'Worker id: {worker_id}, result: {result}')
-
-
+start = time.time()
 runner.start(
-    callables=tasks,
     callback=callback
 )
+end = time.time()
+print(f'Run time [s]: {end - start}')

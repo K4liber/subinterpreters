@@ -1,3 +1,9 @@
+## Description
+
+`Thread` and `Process` are two fundamental units of execution. Although both are related to how a computer executes tasks, they have different characteristics and serve different roles.
+
+`Subinterpreter` ...
+
 ## Environment
 ### Ubuntu
 
@@ -15,3 +21,5 @@ In order to create an environment, type the following commads:
 
 1. `conda install -c conda-forge mamba`  
 2. `mamba env create -f environment.yml --prefix=<path_to_env_dir>`  
+
+## Runner

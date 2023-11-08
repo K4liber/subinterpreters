@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import config
 from runner.interface import RunnerInterface
 from runner.processes import RunnerProcesses
 from runner.subinterpreters import RunnerSubinterpreters
@@ -24,5 +25,5 @@ def get_runner(
         RUNNER_TYPE.SUBINTERPRETER: RunnerSubinterpreters
     }.get(runner_type)
     return runner_class(
-        no_workers=8
+        no_workers=config.NUMBER_OF_WORKERS
     )

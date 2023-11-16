@@ -23,3 +23,6 @@ In order to create an environment, type the following commads:
 2. `mamba env create -f environment.yml --prefix=<path_to_env_dir>`  
 
 ## Runner
+
+## Bilbiography
+[1] https://github.com/jsbueno/extrainterpreters

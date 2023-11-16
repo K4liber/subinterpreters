@@ -1,14 +1,40 @@
 import os
 from concurrent.futures import ThreadPoolExecutor, wait
-from functools import partial
 from textwrap import dedent
+from threading import current_thread
 from typing import Any, Callable
 
 import _xxsubinterpreters as interpreters
 
 import config
 from runner.interface import RunnerInterface
-from runner.threads import thread_callback
+
+
+def run(_callback, _subinterpreter_id, callable_index) -> None:
+    r_pipe, w_pipe = os.pipe()
+    interpreters.run_string(
+    _subinterpreter_id,
+    dedent(f"""
+        import os
+        import sys
+        sys.path.append(os.getcwd())
+
+        from job.callables import callables_list
+
+        result = callables_list[{callable_index}]()
+
+        with open({w_pipe}, 'w', encoding="utf-8") as w_pipe:
+            w_pipe.write(str(result))
+        """)
+    )
+    current_thread_name = current_thread().getName()
+    print(current_thread_name)
+    thread_id = current_thread_name[-1]
+
+    with os.fdopen(r_pipe) as r:
+        result = int(r.read())
+
+    _callback(int(thread_id), result)
 
 
 class RunnerSubinterpreters(RunnerInterface):
@@ -32,34 +58,7 @@ class RunnerSubinterpreters(RunnerInterface):
         with ThreadPoolExecutor(self._no_workers) as executor:
             for _callable_index in range(config.NUMBER_OF_JOBS):
                 _subinterpreter_id = subinterpreter_ids[_callable_index]
-
-                def run(subinterpreter_id: int, callable_index: int) -> int:
-                    r, w = os.pipe()
-                    interpreters.run_string(
-                        subinterpreter_id,
-                        dedent(f"""
-                        import os
-                        import sys
-                        sys.path.append(os.getcwd())
-
-                        from job.callables import callables_list
-
-                        result = callables_list[{callable_index}]()
-
-                        with open({w}, 'w', encoding="utf-8") as w_pipe:
-                            w_pipe.write(str(result))
-                        """)
-                    )
-
-                    with os.fdopen(r) as r_pipe:
-                        return int(r_pipe.read())
-                
-                task = executor.submit(partial(run, _subinterpreter_id, _callable_index))
-                task.add_done_callback(
-                    partial(
-                        thread_callback, callback
-                    )
-                )
+                task = executor.submit(run, callback, _subinterpreter_id, _callable_index)
                 tasks.append(task)
 
             callback()

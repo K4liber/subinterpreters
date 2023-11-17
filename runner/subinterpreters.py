@@ -7,9 +7,7 @@ from typing import Any, Callable
 
 import _xxsubinterpreters as interpreters
 
-import config
 from runner.interface import RunnerInterface
-from job.callables import callables_list
 
 
 def _run(
@@ -47,6 +45,11 @@ def _run(
         current_thread_name = current_thread().getName()
         thread_id = current_thread_name[-1]
 
+        try:
+            thread_id = int(thread_id)
+        except ValueError:
+            thread_id = 0
+
         with open(result_read_pipe, 'rb') as r_pipe:
             result = pickle.load(r_pipe)
     except Exception as exc:
@@ -64,16 +67,18 @@ class RunnerSubinterpreters(RunnerInterface):
 
     def start(
         self,
+        callables_list: list[Callable[[], Any]],
         callback: Callable[[int, Any], Any]
     ) -> None:
         print(f'Running with {self._no_workers} workers.')
+        callables_length = len(callables_list)
         subinterpreter_ids = [
             interpreters.create()
-            for _ in range(config.NUMBER_OF_JOBS)
+            for _ in range(callables_length)
         ]
 
         with ThreadPoolExecutor(self._no_workers) as executor:
-            for _callable_index in range(config.NUMBER_OF_JOBS):
+            for _callable_index in range(callables_length):
                 _subinterpreter_id = subinterpreter_ids[_callable_index]
                 callable = callables_list[_callable_index]
                 executor.submit(_run, callback, _subinterpreter_id, callable)

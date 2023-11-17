@@ -1,4 +1,6 @@
-def fibonacci(n: int) -> int:
+def fibonacci(n: int | str) -> int:
+    n = int(n)
+
     if n < 0:
         raise ValueError("Incorrect input")
     elif n == 0:

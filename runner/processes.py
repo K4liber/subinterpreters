@@ -4,7 +4,6 @@ from functools import partial
 from multiprocessing import get_context
 from typing import Any, Callable
 
-from job.callables import callables_list
 from runner.interface import RunnerInterface
 
 _pids: dict[int, int] = dict()
@@ -44,6 +43,7 @@ class RunnerProcesses(RunnerInterface):
 
     def start(
         self,
+        callables_list: list[Callable[[], Any]],
         callback: Callable[[int, Any], Any]
     ) -> None:
         print(f'Running with {self._no_workers} workers.')
@@ -51,7 +51,6 @@ class RunnerProcesses(RunnerInterface):
         mp_context = get_context('spawn')  # Force the same context on both Unix and Windows
 
         with ProcessPoolExecutor(self._no_workers, mp_context=mp_context) as executor:
-            # call a function on each item in a list and handle results
             for callable in callables_list:
                 task = executor.submit(partial(_callable, callable))
                 task.add_done_callback(

@@ -12,6 +12,7 @@ class RunnerInterface(metaclass=ABCMeta):
     @abstractmethod
     def start(
         self,
+        callables_list: list[Callable[[], Any]],
         callback: Callable[[int, Any], Any]
     ) -> None:
         ...

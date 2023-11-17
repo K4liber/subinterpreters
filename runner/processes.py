@@ -1,5 +1,5 @@
 import os
-from concurrent.futures import Future, ProcessPoolExecutor, wait
+from concurrent.futures import Future, ProcessPoolExecutor
 from functools import partial
 from multiprocessing import get_context
 from typing import Any, Callable
@@ -35,19 +35,12 @@ def _callable(
 
 
 class RunnerProcesses(RunnerInterface):
-    def __init__(
-        self,
-        no_workers: int
-    ) -> None:
-        super().__init__(no_workers=no_workers)
 
     def start(
         self,
         callables_list: list[Callable[[], Any]],
         callback: Callable[[int, Any], Any]
     ) -> None:
-        print(f'Running with {self._no_workers} workers.')
-        tasks = []
         mp_context = get_context('spawn')  # Force the same context on both Unix and Windows
 
         with ProcessPoolExecutor(self._no_workers, mp_context=mp_context) as executor:
@@ -58,10 +51,8 @@ class RunnerProcesses(RunnerInterface):
                         _callback, callback
                     )
                 )
-                tasks.append(task)
         
             callback()
-            print('Waiting for tasks to complete...')
-            wait(tasks)
-            global _pids
-            _pids = dict()
+
+        global _pids
+        _pids = dict()

@@ -122,7 +122,10 @@ class MainWindow(QMainWindow):
             worker_id: int | str | None = None,
             result: Any = None
         ) -> None:
-        print(f'Worker {worker_id}, result = {result}')
+        if worker_id is not None:
+            print(f'Task completed. Worker id = {worker_id}, result = {result}')
+        else:
+            print(f'Tasks started successfully.')
 
         if worker_id is not None:
             self._advance_progress_bar(worker_index=int(worker_id))
@@ -134,9 +137,12 @@ class MainWindow(QMainWindow):
         self.repaint()
 
     def _start_job(self) -> None:
+        print('#' * 50)
         self._clear()
         self._worker_type_combo.setDisabled(True)
         self._start_button.setDisabled(True)
+        self._function_selection_combo.setDisabled(True)
+        self._function_args_text_area.setDisabled(True)
         self._start_button.setText("Running ...")
         self.repaint()
         runner = get_runner(runner_type=self._worker_type_combo.currentText())
@@ -147,15 +153,19 @@ class MainWindow(QMainWindow):
             partial(selected_callable, *args_list)
             for _ in range(config.NUMBER_OF_JOBS)
         ]
+        print(f'Running worker "{runner.runner_type}" with {runner.no_workers} workers.')
         runner.start(
             callables_list=callables_list,
             callback=self._callback
         )
-        overall_time = int((time.time() - self._time_start) * 100)/100
-        self._timing_overall_value.setText(str(overall_time))
+        overall_time = str(int((time.time() - self._time_start) * 100)/100)
+        self._timing_overall_value.setText(overall_time)
+        print(f'All tasks completed successfully in {overall_time} seconds.')
         self._worker_type_combo.setDisabled(False)
         self._start_button.setDisabled(False)
         self._start_button.setText("Start")
+        self._function_selection_combo.setDisabled(False)
+        self._function_args_text_area.setDisabled(False)
 
     def _advance_progress_bar(self, worker_index: int | None = None) -> None:
         if worker_index is None:

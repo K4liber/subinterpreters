@@ -24,19 +24,12 @@ def thread_callback(
 
 
 class RunnerThreads(RunnerInterface):
-    def __init__(
-        self,
-        no_workers: int
-    ) -> None:
-        super().__init__(no_workers=no_workers)
 
     def start(
         self,
         callables_list: list[Callable[[], Any]],
         callback: Callable[[int, Any], Any]
     ) -> None:
-        print(f'Running with {self._no_workers} workers.')
-        tasks = []
 
         with ThreadPoolExecutor(self._no_workers) as executor:
             for callable in callables_list:
@@ -46,8 +39,5 @@ class RunnerThreads(RunnerInterface):
                         thread_callback, callback
                     )
                 )
-                tasks.append(task)
 
             callback()
-            print('Waiting for tasks to complete...')
-            wait(tasks)

@@ -11,9 +11,9 @@ from runner.interface import RunnerInterface
 
 
 def _run(
-        callback,
-        subinterpreter_id,
-        callable
+        callback: Callable[[int, Any], Any],
+        subinterpreter_id: int,
+        callable: Callable[[], Any]
     ) -> None:
     try:
         result_read_pipe, result_write_pipe = os.pipe()
@@ -59,18 +59,12 @@ def _run(
 
 
 class RunnerSubinterpreters(RunnerInterface):
-    def __init__(
-        self,
-        no_workers: int
-    ) -> None:
-        super().__init__(no_workers=no_workers)
 
     def start(
         self,
         callables_list: list[Callable[[], Any]],
         callback: Callable[[int, Any], Any]
     ) -> None:
-        print(f'Running with {self._no_workers} workers.')
         callables_length = len(callables_list)
         subinterpreter_ids = [
             interpreters.create()
@@ -84,4 +78,3 @@ class RunnerSubinterpreters(RunnerInterface):
                 executor.submit(_run, callback, _subinterpreter_id, callable)
 
             callback()
-            print('Waiting for tasks to complete...')

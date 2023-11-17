@@ -1,14 +1,14 @@
-from functools import partial
 import time
+from functools import partial
 from typing import Any
 
 from PyQt5.QtWidgets import (QApplication, QComboBox, QHBoxLayout, QLabel,
-                             QMainWindow, QProgressBar, QPushButton,
+                             QLineEdit, QMainWindow, QProgressBar, QPushButton,
                              QVBoxLayout, QWidget)
 
 import config
+from job.callables import get_available_callables, get_callable
 from runner.factory import RUNNER_TYPE, get_runner
-from task.fibonacci import fibonacci
 
 
 class MainWindow(QMainWindow):
@@ -36,6 +36,33 @@ class MainWindow(QMainWindow):
         type_selection_layout.addWidget(self._worker_type_combo)
         type_selection_widget.setLayout(type_selection_layout)
         self._layout.addWidget(type_selection_widget)
+        # Function to execute selection
+        function_selection_widget = QWidget()
+        function_selection_layout = QHBoxLayout()
+        function_selection_label = QLabel('Function to execute:')
+        self._function_selection_combo = QComboBox()
+
+        for function_name in get_available_callables():
+            self._function_selection_combo.addItem(function_name)
+
+        function_selection_layout.addWidget(function_selection_label)
+        function_selection_layout.addWidget(self._function_selection_combo)
+        function_selection_widget.setLayout(function_selection_layout)
+        self._layout.addWidget(function_selection_widget)
+        # Function args selection
+        function_args_widget = QWidget()
+        function_args_layout = QHBoxLayout()
+        function_args_label = QLabel('Function arguments:')
+        self._function_args_text_area = QLineEdit()
+        self._function_args_text_area.setFixedSize(188, 25)
+
+        for function_name in get_available_callables():
+            self._function_selection_combo.addItem(function_name)
+
+        function_args_layout.addWidget(function_args_label)
+        function_args_layout.addWidget(self._function_args_text_area)
+        function_args_widget.setLayout(function_args_layout)
+        self._layout.addWidget(function_args_widget)
         # Progress bars
         self._progress_bars = []
         self._create_progress_bars(number_of_workers=config.NUMBER_OF_WORKERS)
@@ -96,6 +123,11 @@ class MainWindow(QMainWindow):
             result: Any = None
         ) -> None:
         if worker_id is not None:
+            print(f'Task completed. Worker id = {worker_id}, result = {result}')
+        else:
+            print(f'Tasks started successfully.')
+
+        if worker_id is not None:
             self._advance_progress_bar(worker_index=int(worker_id))
             self._advance_progress_bar()
         else:
@@ -105,21 +137,35 @@ class MainWindow(QMainWindow):
         self.repaint()
 
     def _start_job(self) -> None:
+        print('#' * 50)
         self._clear()
         self._worker_type_combo.setDisabled(True)
         self._start_button.setDisabled(True)
+        self._function_selection_combo.setDisabled(True)
+        self._function_args_text_area.setDisabled(True)
         self._start_button.setText("Running ...")
         self.repaint()
         runner = get_runner(runner_type=self._worker_type_combo.currentText())
         self._time_start = time.time()
+        selected_callable = get_callable(self._function_selection_combo.currentText())
+        args_list = self._function_args_text_area.text().split(',')
+        callables_list = [
+            partial(selected_callable, *args_list)
+            for _ in range(config.NUMBER_OF_JOBS)
+        ]
+        print(f'Running worker "{runner.runner_type}" with {runner.no_workers} workers.')
         runner.start(
+            callables_list=callables_list,
             callback=self._callback
         )
-        overall_time = int((time.time() - self._time_start) * 100)/100
-        self._timing_overall_value.setText(str(overall_time))
+        overall_time = str(int((time.time() - self._time_start) * 100)/100)
+        self._timing_overall_value.setText(overall_time)
+        print(f'All tasks completed successfully in {overall_time} seconds.')
         self._worker_type_combo.setDisabled(False)
         self._start_button.setDisabled(False)
         self._start_button.setText("Start")
+        self._function_selection_combo.setDisabled(False)
+        self._function_args_text_area.setDisabled(False)
 
     def _advance_progress_bar(self, worker_index: int | None = None) -> None:
         if worker_index is None:

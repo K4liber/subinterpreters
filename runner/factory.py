@@ -25,5 +25,6 @@ def get_runner(
         RUNNER_TYPE.SUBINTERPRETER: RunnerSubinterpreters
     }.get(runner_type)
     return runner_class(
-        no_workers=config.NUMBER_OF_WORKERS
+        no_workers=config.NUMBER_OF_WORKERS,
+        runner_type=runner_type
     )

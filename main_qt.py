@@ -95,6 +95,8 @@ class MainWindow(QMainWindow):
             worker_id: int | str | None = None,
             result: Any = None
         ) -> None:
+        print(f'Worker {worker_id}, result = {result}')
+
         if worker_id is not None:
             self._advance_progress_bar(worker_index=int(worker_id))
             self._advance_progress_bar()

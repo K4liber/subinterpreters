@@ -1,5 +1,6 @@
 import os
-from concurrent.futures import ThreadPoolExecutor, wait
+from concurrent.futures import ThreadPoolExecutor
+import pickle
 from textwrap import dedent
 from threading import current_thread
 from typing import Any, Callable
@@ -8,33 +9,50 @@ import _xxsubinterpreters as interpreters
 
 import config
 from runner.interface import RunnerInterface
+from job.callables import callables_list
 
 
-def run(_callback, _subinterpreter_id, callable_index) -> None:
-    r_pipe, w_pipe = os.pipe()
-    interpreters.run_string(
-    _subinterpreter_id,
-    dedent(f"""
-        import os
-        import sys
-        sys.path.append(os.getcwd())
+def _run(
+        callback,
+        subinterpreter_id,
+        callable
+    ) -> None:
+    try:
+        result_read_pipe, result_write_pipe = os.pipe()
+        callable_read_pipe, callable_write_pipe = os.pipe()
 
-        from job.callables import callables_list
+        with open(callable_write_pipe, 'wb') as w_pipe:
+            pickle.dump(callable, w_pipe)
 
-        result = callables_list[{callable_index}]()
+        interpreters.run_string(
+            subinterpreter_id,
+            dedent(f"""
+                import os
+                import sys
+                sys.path.append(os.getcwd())
 
-        with open({w_pipe}, 'w', encoding="utf-8") as w_pipe:
-            w_pipe.write(str(result))
-        """)
-    )
-    current_thread_name = current_thread().getName()
-    print(current_thread_name)
-    thread_id = current_thread_name[-1]
+                import pickle
 
-    with os.fdopen(r_pipe) as r:
-        result = int(r.read())
+                with open({callable_read_pipe}, 'rb') as r_pipe:
+                    callable = pickle.load(r_pipe)
+                
+                result = callable()
 
-    _callback(int(thread_id), result)
+                with open({result_write_pipe}, 'wb') as w_pipe:
+                   pickle.dump(result, w_pipe)
+
+                """
+            )
+        )
+        current_thread_name = current_thread().getName()
+        thread_id = current_thread_name[-1]
+
+        with open(result_read_pipe, 'rb') as r_pipe:
+            result = pickle.load(r_pipe)
+    except Exception as exc:
+        callback(-1, str(exc))
+
+    callback(int(thread_id), result)
 
 
 class RunnerSubinterpreters(RunnerInterface):
@@ -53,14 +71,12 @@ class RunnerSubinterpreters(RunnerInterface):
             interpreters.create()
             for _ in range(config.NUMBER_OF_JOBS)
         ]
-        tasks = []
 
         with ThreadPoolExecutor(self._no_workers) as executor:
             for _callable_index in range(config.NUMBER_OF_JOBS):
                 _subinterpreter_id = subinterpreter_ids[_callable_index]
-                task = executor.submit(run, callback, _subinterpreter_id, _callable_index)
-                tasks.append(task)
+                callable = callables_list[_callable_index]
+                executor.submit(_run, callback, _subinterpreter_id, callable)
 
             callback()
             print('Waiting for tasks to complete...')
-            wait(tasks)

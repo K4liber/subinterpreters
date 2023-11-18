@@ -56,10 +56,6 @@ class MainWindow(QMainWindow):
         self._function_args_text_area = QLineEdit()
         self._function_args_text_area.setFixedSize(188, 25)
         self._function_args_text_area.setText('32')
-
-        for function_name in get_available_callables():
-            self._function_selection_combo.addItem(function_name)
-
         function_args_layout.addWidget(function_args_label)
         function_args_layout.addWidget(self._function_args_text_area)
         function_args_widget.setLayout(function_args_layout)

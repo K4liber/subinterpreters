@@ -55,6 +55,7 @@ class MainWindow(QMainWindow):
         function_args_label = QLabel('Function arguments:')
         self._function_args_text_area = QLineEdit()
         self._function_args_text_area.setFixedSize(188, 25)
+        self._function_args_text_area.setText('32')
         function_args_layout.addWidget(function_args_label)
         function_args_layout.addWidget(self._function_args_text_area)
         function_args_widget.setLayout(function_args_layout)

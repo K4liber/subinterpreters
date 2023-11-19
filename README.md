@@ -4,19 +4,25 @@ The repository is a small exercise of how one can use a newly introduced `Python
 
 The feature is an accepted solution for multi-core `Python`. It is already available through `Python/C API` starting from `Python` version `3.12`. 
 
-If you value results and your time more than stories, please go right away to the section `Play with a per-interpreter GIL yourself` and see an example of `per-interpreter GIL` usage.
+If you value results and your time more than stories, please go right away to the section [Play with a per-interpreter GIL yourself](#playground) and see an example of `per-interpreter GIL` usage.
 
-# Story behind this repository
+# Multi-core utilization
 
 ### Before we start, let's recall some technicalities
 
 `Thread` and `Process` are two fundamental units of execution. Although both are related to how a computer executes tasks, they have different characteristics and serve different roles.
 
-`Subinterpreter` ...
+![alt text](images/ThreadDiagram.png)  
+Figure 1. *Typical relationsip between
+threads and processes* [[2]](#b2)
 
 The `thread scheduler` is a fundamental part of modern operating systems and programming environments that manages the execution of threads in a multi-threaded application. Its primary responsibility is to allocate CPU time to different threads, ensuring fair execution and efficient utilization of system resources. Thread scheduling is crucial for achieving concurrency, responsiveness, and efficient use of hardware. [https://medium.com/@sadigrzazada20/the-thread-scheduler-4c40c6143009]
 
-### The GIL is the cause
+`Subinterpreter` ...
+
+`Pipe` ...
+
+### GIL slows down my computations
 
 While I was working on a task in one of the projects I struggle with a speed of loading the input data. 
 It was taking several seconds because of **loading multiple files** with a table format data (excel/csv).
@@ -74,11 +80,14 @@ it is a blocker for utilizing multiple cores.
 - `per-interpreter GIL` seems like a promising 
 approach for multi-core ... But lets wait for 3.13 and a solid interface, together with 
 external modules support.
-# Play with a per-interpreter GIL yourself
+# <a name="playground"></a>Play with a per-interpreter GIL yourself
 
 I have created a simple application with a GUI (using QT) in order to show an example of using `Subinterpreter` as an unit of execution. I strongly encourage you to playaround with the code.
 
 There is already an implemention[1] of a Python interface for `interpreters` C API, but I found it too complex for my case (running a bunch of pure functions) and I have introduced the more briefly implementation ...
+
+Sometimes using `per-interpreter GIL`, CPUs are not fully utilize and I can only guess that the reason is not good enough context switching. The same situation we encounter with `Web Workers` ...
+
 
 ## Environment
 ### Ubuntu
@@ -102,7 +111,11 @@ In order to create an environment, type the following commads:
 
 # Bilbiography
 [1] `Python interface for the "intepreters" C API`, https://github.com/jsbueno/extrainterpreters  
-[2] https://www.reddit.com/r/Python/comments/16yw7zt/what_are_the_differences_between_python_312/  
+
+<a name="b2"></a>[2] Neil Coffey, `How threads work: more details`, https://www.javamex.com/tutorials/threads/how_threads_work.shtml
+
 [3] Eric Snow, `A Per-Interpreter GIL: Concurrency and Parallelism with Subinterpreters`, https://www.youtube.com/watch?v=3ywZjnjeAO4  
+
 [4] Eric Snow, `PEP 554 – Multiple Interpreters in the Stdlib`, https://peps.python.org/pep-0554/  
-[5] Eric Snow, `PEP 684 – A Per-Interpreter GIL`, https://peps.python.org/pep-0684/
+
+[5] Eric Snow, `PEP 684 – A Per-Interpreter GIL`, https://peps.python.org/pep-0684/  

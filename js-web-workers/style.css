@@ -1,0 +1,36 @@
+.main {
+    width: 300px;
+    text-align: center;
+}
+
+#start-button {
+    margin: auto;
+}
+
+.worker-div {
+    border: 1px solid black;
+    padding: 10px;
+    margin: 5px;
+    width: 270px;
+    height: 30px;
+}
+
+.worker-label {
+    display: inline-block;
+    vertical-align: middle;
+    width:80px;
+    height:30px;
+}
+
+.worker-progress {
+    display: inline-block;
+    width:180px;
+    height:30px;
+    border: 1px solid blue;
+}
+
+.worker-progress-internal {
+    background-color: blue;
+    width:0%;
+    height:30px;
+}

@@ -14,6 +14,8 @@ If you value results and your time more than stories, please go right away to th
 
 `Subinterpreter` ...
 
+The `thread scheduler` is a fundamental part of modern operating systems and programming environments that manages the execution of threads in a multi-threaded application. Its primary responsibility is to allocate CPU time to different threads, ensuring fair execution and efficient utilization of system resources. Thread scheduling is crucial for achieving concurrency, responsiveness, and efficient use of hardware. [https://medium.com/@sadigrzazada20/the-thread-scheduler-4c40c6143009]
+
 ### The GIL is the cause
 
 While I was working on a task in one of the projects I struggle with a speed of loading the input data. 

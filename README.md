@@ -1,9 +1,10 @@
 # Per-interpreter GIL as a solution for multi-core Python
 
-The repository is a small exercise of how one can use a newly introduced `Python` feature which is an usage of per-interpreter `GIL`. The feature is an accepted solution for multi-core `Python`. It is already available through Python/C API starting from `Python` version `3.12`. 
+The repository is a small exercise of how one can use a newly introduced `Python` feature which is an usage of `per-interpreter GIL`. 
 
-If you are interested in the whole story behind this repository, please read the whole document. 
-If you value results and your time more than stories, please go to section `Play with a per-interpreter GIL yourself` and see what is currently available.
+The feature is an accepted solution for multi-core `Python`. It is already available through `Python/C API` starting from `Python` version `3.12`. 
+
+If you value results and your time more than stories, please go right away to the section `Play with a per-interpreter GIL yourself` and see an example of `per-interpreter GIL` usage.
 
 # Story behind this repository
 
@@ -16,8 +17,9 @@ If you value results and your time more than stories, please go to section `Play
 ### The GIL is the cause
 
 While I was working on a task in one of the projects I struggle with a speed of loading the input data. 
-It was taking several seconds because of loading multiple files with a table format data (excel/csv). 
-I tried to use multi-threading and load each file in a seperate thread. 
+It was taking several seconds because of **loading multiple files** with a table format data (excel/csv).
+
+I tried to use **multi-threading** and load each file in a seperate thread. 
 It gave a solid speed-up of the loading. Unfortunetly, python interpreter uses GIL[TODO link] mechanism (trust me, there are good reason for GIL existence). Thanks to that, only a single thread (main one or a child thread) can be running at a time.
 
 ### Multi-processing as a way to do it
@@ -39,7 +41,11 @@ multiple PEP's with parts supporting the final implementation.
 
 ### What other programming languages can offer on the multi-core approach? 
 
-`JavaScript`, similary as `Python`, is an interpreted language and does not require to compile before execution. One way to achieve concurrency in JavaScript is through the use of web workers, which are JavaScript scripts that run in the background and can perform tasks independently of the main thread. 
+`JavaScript`, similary as `Python`, is an interpreted language. One way to achieve concurrency in JavaScript is through the use of `Web Workers`, which are JavaScript scripts that run in the background and can perform tasks independently of the main thread. 
+
+`Web Workers` are more like `Python`'s multiprocessing in the sense that they both provide true concurrency for CPU-bound tasks by utilizing multiple cores. Web Workers create separate threads, while multiprocessing in Python creates separate processes.
+
+Communication between threads in `Python` can be done through shared memory or thread-safe data structures, while `Web Workers` only communicate through message passing, which limits the potential for race conditions and makes state management simpler at the cost of being potentially less efficient for certain kinds of data exchange.
 
 `C#` ...
 https://www.c-sharpcorner.com/UploadFile/1c8574/thread-safety369/
@@ -56,15 +62,21 @@ https://peps.python.org/pep-0684/#rationale
 
 ### What have we learned?
 
-- `Python` PEPs can be really heavy and require a lot of work
+- `Python` PEPs can sometimes be very broad and require a lot of work.
 - Initial decisions have a huge impact on the following features of a 
-programming language (GIL again)
-- ...
-
+programming language (e.g. GIL).
+- The full multi-core potential in `Python` is 
+hard to achieve since the initial decision on 
+the language behaviour. `GIL` is a simple solution for the thead-safety problems, but 
+it is a blocker for utilizing multiple cores.
+- `per-interpreter GIL` seems like a promising 
+approach for multi-core ... But lets wait for 3.13 and a solid interface, together with 
+external modules support.
 # Play with a per-interpreter GIL yourself
 
-I have created a simple application with a GUI (using QT) in order to show an example of using `Subinterpreter` as an unit of execution. 
-I strongly encourage you to playaround with the code. There is already an implemention[1] of a Python interface for `interpreters` C API, but I found it too complex for my case (running a bunch of pure functions) and I have introduced the more briefly implementation ...
+I have created a simple application with a GUI (using QT) in order to show an example of using `Subinterpreter` as an unit of execution. I strongly encourage you to playaround with the code.
+
+There is already an implemention[1] of a Python interface for `interpreters` C API, but I found it too complex for my case (running a bunch of pure functions) and I have introduced the more briefly implementation ...
 
 ## Environment
 ### Ubuntu

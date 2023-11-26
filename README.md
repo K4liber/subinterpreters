@@ -4,15 +4,15 @@
 
 The repository is a small exercise of how one can use a newly introduced `Python` feature called a `Per-interpreter GIL`[[5]](#b5). `Per-interpreter GIL` allows for utilizing multiple cores within a single Python process.
 
-The feature was accepted as a solution for multi-core `Python` and it is already available through `Python/C API` starting from `Python` version `3.12`. Pythonic interface for the feature will come together with the next `Python` version `3.13` (coming out on October 2024).
+The feature was accepted as a solution for multi-core `Python` and it is already available<sup>[1](#f1)</sup> through `Python/C API` starting from `Python` version `3.12`. Pythonic interface for the feature will come together with the next `Python` version `3.13` (coming out on October 2024).
 
 If you would like to skip the theoretical aspects and go straight to the practical example, please go right away to the section [Play with a per-interpreter GIL yourself](#playground).
 
 ## Technicalities 
 
-#### What units of program execution do we use?
+#### Units of program execution
 
-`Thread` and `Process` are two fundamental units of execution. Although both are related to how a computer executes tasks, they have different characteristics and serve different roles.
+`Thread` and `Process` are two fundamental units of execution. Although both are related to how a computer executes tasks, they have different characteristics and serve different roles. It is recommended to understand what is showed on the image below in order to proceed with the article.
 
 ![alt text](images/ThreadDiagram.png)  
 Figure 1. *Typical relationsip between
@@ -32,11 +32,13 @@ A `python interpreter` is a computer program that converts python code into mach
 
 #### Is GIL only slowing down my multi-threaded programs or is it any useful?
 
-`GIL` simplifies developers lifes. For example, performing the most common operations on a dict shared between multiple threads will not result in a race condition or corruption of the data within the dict. Moreover, when you are reading or writing from a file or socket the GIL is released allowing multiple threads to run in parallel. The `GIL` is smart, it tries to help, you need to have more trust in `GIL`.
+`GIL` simplifies developers lifes. For example, performing the most common operations on a dictionary shared between multiple threads will not result in a race condition or corruption of the data within the dictionary. Moreover, when you are reading or writing from a file or socket the GIL is released allowing multiple threads to run in parallel. The `GIL` is smart, it tries to help, you need to have more trust in `GIL`.
 
 #### What about pure python functions? Is it safe to execute them using multiple threads running at the same time, witihin a single process?
 
-From the perspective of a Python developer who defines a pure function based solely on the absence of explicit shared state manipulation within the function's code, there are still implicit actions performed by the CPython interpreter that can modify shared state.
+<a name="shared_state"></a>From the perspective of a Python developer who defines a pure function based solely on the absence of explicit shared state manipulation within the function's code, there are still implicit actions performed by the CPython interpreter that can modify shared state.
+
+TODO clean this mess up
 
 For example, `Reference Counts` + `String interning`.
 
@@ -74,6 +76,8 @@ No. Those functions aren't pure on the level on which the GIL operates. There is
 
 ## Per-interpreter GIL
 
+I would like to take a step back and shortly describe my interest in the `Per-interpreter GIL`.
+
 #### Bulding python objects using data from files
 
 Once I was struggling with a speed of loading the input data for some computation program. Loading was taking several seconds because of loading multipl files with a table format data (excel/csv), laying on the storage.
@@ -84,16 +88,16 @@ It gave a solid speed-up of the loading. Unfortunetly, due to GIL existence, all
 #### Multi-processing as a way to do it
 
 Since there are some CPU operations involved (loading data into memory as `pdtable` objects) 
-I have tried to use multi-processing instead. The performance, when it comes to speed, was pretty the same as using multi-threading. The main process needs to spawn itself multiple times and it takes some time. I have experienced a long spawning time while debugging in VSCode, on the regular run it is not so slow.
+I have tried to use multi-processing instead. The performance, when it comes to speed, was pretty the same as using multi-threading. The main process needs to spawn itself multiple times and it takes some time. I have experienced a long spawning time while debugging in VSCode, on the regular run it is not that slow.
 
 #### We should not need multiple processes.
 
-But why do we even need to create a seperate process for such a pure function execution? We do not care about synchronization of any data here and we do not need to ensure thread-safe sharing of any state. We just want to run a function with a specific input and get the results back to the main thread (the one that is running the main `Python` interpreter). Shouldn't it be allowed to run on mutli-cores? I emphasize again, we do not care about any data/state synchronization. As I mentioned before, it is not possible, due to a shared state between threads within a single python interpreter run.
+But why do we even need to create a seperate process for such a pure function execution? We do not care about synchronization of any data here and we do not need to ensure thread-safe sharing of any explicity defined state. We just want to run a function with a specific input and get the results back to the main thread (the one that starts and runs a `Python` interpreter). Shouldn't it be allowed to run on mutli-cores? I emphasize again, we do not care about any data/state synchronization. As I mentioned [here](#shared_state), it is not possible, due to a shared state implicite created by `Python` intepreter. 
 
 #### Here it comes ... A Per-Interpreter GIL.
 
 After some time, I was reading about new features of `python` version `3.12` and I came across `PEP 684 – A Per-Interpreter GIL`[5]. 
-Somebody creates an implementation of the real multi-core behaviour in `Python`. First version of `Python` was released in 1991. Multiple cores processors started to be used on daily basis a bit later (The first commercial multicore processor architecture was Power 4 processor developed by IBM in 2001 [TODO source]). It seems like there is a lot of work to be done 
+Somebody creates an implementation of the real multi-core behaviour in `Python`! First version of `Python` was released in 1991. Multiple cores processors started to be used on daily basis a bit later (The first commercial multicore processor architecture was Power 4 processor developed by IBM in 2001 [TODO source]). It seems like there is a lot of work to be done 
 since the whole architecture of python is not really supportive to the idea. The work already started and is ongoing for a few years with 
 multiple PEP's with parts supporting the final implementation.
 
@@ -158,11 +162,11 @@ In order to create an environment, type the following commads:
 1. `conda install -c conda-forge mamba`  
 2. `mamba env create -f environment.yml --prefix=<path_to_env_dir>`  
 
-### A `Per-interpreter` runner*
+### A `Per-interpreter` runner<sup>[2](#f2)</sup>
 
 TODO python example execution intructions ...
 
-### [EXTRA] JS `Web-workers` runner*
+### [EXTRA] JS `Web-workers` runner<sup>[2](#f2)</sup>
 
 TODO JS example execution instructions ...
 
@@ -170,7 +174,10 @@ TODO JS example execution instructions ...
 
 TODO C# example execution intructions ... (ChatGPT helped with the implementation of this simple program)
 
-\**Sometimes, on my machine with Ubuntu, using `per-interpreter GIL`, CPUs are not fully utilize. I can only guess that the reason is not good enough context switching, but I didnt make a deeper examination. The same situation we encounter with `Web Workers` and since those two approaches 
+# Footnotes
+
+<a name="f1"></a>*1. Still me need to wait for python modules to be compatible with `Per-interpreter GIL` approach. For example, `numpy` is not working yet ... TODO make it clear.*  
+<a name="f2"></a>*2. Sometimes, on my machine with Ubuntu, CPUs are not fully utilize while using `per-interpreter GIL`. I can only guess that the reason is not good enough context switching, but I didnt make a deeper examination. The same situation we encounter with `Web Workers` and since those two approaches 
 share the same thread scheduler on my machine, I am leaning towards blaming a `thread scheduler` for the situation.*
 
 # Bilbiography

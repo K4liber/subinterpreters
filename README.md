@@ -2,15 +2,15 @@
 
 ## Intro
 
-The repository is a small exercise of how one can use a newly introduced `Python` feature which is a `per-interpreter GIL`. 
+The repository is a small exercise of how one can use a newly introduced `Python` feature called a `Per-interpreter GIL`[[5]](#b5). `Per-interpreter GIL` allows for utilizing multiple cores within a single Python process.
 
-The feature is an accepted solution for multi-core `Python`. It is already available through `Python/C API` starting from `Python` version `3.12`. 
+The feature was accepted as a solution for multi-core `Python` and it is already available through `Python/C API` starting from `Python` version `3.12`. Pythonic interface for the feature will come together with the next `Python` version `3.13` (coming out on October 2024).
 
-If you value results and your time more than stories, please go right away to the section [Play with a per-interpreter GIL yourself](#playground) and see an example of `per-interpreter GIL` usage.
+If you would like to skip the theoretical aspects and go straight to the practical example, please go right away to the section [Play with a per-interpreter GIL yourself](#playground).
 
 ## Technicalities 
 
-#### What units of program execution do we have?
+#### What units of program execution do we use?
 
 `Thread` and `Process` are two fundamental units of execution. Although both are related to how a computer executes tasks, they have different characteristics and serve different roles.
 
@@ -36,33 +36,43 @@ A `python interpreter` is a computer program that converts python code into mach
 
 #### What about pure python functions? Is it safe to execute them using multiple threads running at the same time, witihin a single process?
 
-Even in the context of executing pure functions, which by definition do not modify any shared state or have side effects, multiple threads can still affect the shared state of the Python interpreter, for example, `Reference Counts`. Every object in Python has an associated reference count that the garbage collector uses to determine when its memory can be freed. When you create, copy, or delete any Python object (even locals within pure functions), it affects the reference count. This operation must be protected by the GIL because it changes the global state of the interpreter. Without the GIL, two threads that increment or decrement the reference count of the same object concurrently might corrupt the reference count, leading to memory leaks or premature deallocation.
+From the perspective of a Python developer who defines a pure function based solely on the absence of explicit shared state manipulation within the function's code, there are still implicit actions performed by the CPython interpreter that can modify shared state.
 
-#### Once again: Is there a way to release the GIL for pure functions using python?
+For example, `Reference Counts` + `String interning`.
 
-In short, the answer is NO. Those functions aren't pure on the level on which the GIL operates.[[9]](#b9)
+`Reference Counts` is a mechanism that involves such implicit actions. Every object in Python has an associated reference count that the garbage collector uses to determine when its memory can be freed. When you create, copy, or delete any Python object (even locals within pure functions), it affects the reference count. This operation must be protected by the GIL because it changes the global state of the interpreter. Without the GIL, two threads that increment or decrement the reference count of the same object concurrently might corrupt the reference count, leading to memory leaks or premature deallocation.
+
+Nice article about `String interning`: https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-iii-string-interning-625d3c7319de 
+
+TLTR:
+
+Python tries its best to exclusively intern the strings that are most likely to be reused — identifier strings. Identifier strings include the following:
+
+- Function and class names
+- Variable names
+- Argument names
+- Dictionary keys
+- Attribute names
+
+Using shared cached objects in this manner and manipulating their reference counts unsafely can result in serious issues. This example highlights why it's crucial for extension modules, especially those releasing the GIL, to manage the lifecycle and reference counts of Python objects correctly.
 
 ```
-def f(t):
-    x = 16 * sin(t) ** 3
-    y = 13 * cos(t) - 5 * cos(2*t) - 2 * cos(3*t) - cos(4*t)
-    return (x, y)
+>>> a = "Michael"
+>>> b = "Michael"
+>>> id(a), id(b), a is b
+(139691346551904, 139691346551904, True)
 ```
 
-```
->>> dis.dis(f)
-  2           0 LOAD_CONST               1 (16)
-              2 LOAD_GLOBAL              0 (sin)
-              4 LOAD_FAST                0 (t)
-              6 CALL_FUNCTION            1
-              8 LOAD_CONST               2 (3)
-             10 BINARY_POWER
-             12 BINARY_MULTIPLY
-             14 STORE_FAST               1 (x)
-             ...
-```
+![alt text](images/sharing.png)  
+Figure 1. *Demystifying CPython Shared Objects* [[10]](#b10)
 
-# Per-interpreter GIL
+To conclude:
+
+*Is it safe to not using GIL for executing pure python functions in multiple threads?*
+
+No. Those functions aren't pure on the level on which the GIL operates. There is still a state shared by multiple threads while exececuting on the python intepreter level.
+
+## Per-interpreter GIL
 
 #### Bulding python objects using data from files
 
@@ -74,16 +84,16 @@ It gave a solid speed-up of the loading. Unfortunetly, due to GIL existence, all
 #### Multi-processing as a way to do it
 
 Since there are some CPU operations involved (loading data into memory as `pdtable` objects) 
-I have tried to use multi-processing instead. The performance, when it comes to speed, was pretty the same as using multi-threading. This was because the main process needs to spawn itself multiple times and it takes some time. I have experienced a long spawning time while debugging in VSCode, on the regular run it is not so slow.
+I have tried to use multi-processing instead. The performance, when it comes to speed, was pretty the same as using multi-threading. The main process needs to spawn itself multiple times and it takes some time. I have experienced a long spawning time while debugging in VSCode, on the regular run it is not so slow.
 
 #### We should not need multiple processes.
 
 But why do we even need to create a seperate process for such a pure function execution? We do not care about synchronization of any data here and we do not need to ensure thread-safe sharing of any state. We just want to run a function with a specific input and get the results back to the main thread (the one that is running the main `Python` interpreter). Shouldn't it be allowed to run on mutli-cores? I emphasize again, we do not care about any data/state synchronization. As I mentioned before, it is not possible, due to a shared state between threads within a single python interpreter run.
 
-### Here it comes ... A Per-Interpreter GIL.
+#### Here it comes ... A Per-Interpreter GIL.
 
 After some time, I was reading about new features of `python` version `3.12` and I came across `PEP 684 – A Per-Interpreter GIL`[5]. 
-Somebody, creates an implementation of the real multi-core behaviour in `Python`. First version of `Python` was released in 1991. Multiple cores processors started to be used on daily basis a bit later (The first commercial multicore processor architecture was Power 4 processor developed by IBM in 2001 [TODO source]). It seems like there is a lot of work to be done 
+Somebody creates an implementation of the real multi-core behaviour in `Python`. First version of `Python` was released in 1991. Multiple cores processors started to be used on daily basis a bit later (The first commercial multicore processor architecture was Power 4 processor developed by IBM in 2001 [TODO source]). It seems like there is a lot of work to be done 
 since the whole architecture of python is not really supportive to the idea. The work already started and is ongoing for a few years with 
 multiple PEP's with parts supporting the final implementation.
 
@@ -116,34 +126,26 @@ https://peps.python.org/pep-0684/#rationale
 programming language (e.g. GIL).
 - The full multi-core potential in `Python` is 
 hard to achieve since the initial decision on 
-the language behaviour. `GIL` is a simple solution for the thead-safety problems, but 
+the language behaviour. `GIL` is a simple solution for the thread-safety problems, but 
 it is a blocker for utilizing multiple cores.
-- `per-interpreter GIL` seems like a promising 
-approach for multi-core ... But lets wait for 3.13 and a solid interface, together with 
+- `Per-interpreter GIL` seems like a promising 
+approach for multi-core utilization. But lets wait for 3.13 and a solid interface, together with 
 external modules support.
 - `Python` has a lot of cons, but a lot of of people still love it, mostly due to the  great, initial simplicity of writing programs in `Python`. Prototyping with `Python` is easy and fast.
 
-# <a name="playground"></a>Play with a per-interpreter GIL yourself
+## <a name="playground"></a>Play with a per-interpreter GIL yourself
 
 I have created a simple application with a GUI (using QT) in order to show an example of using `Subinterpreter` as an unit of execution. I strongly encourage you to playaround with the code.
 
-There is already an implemention[1] of a Python interface for `interpreters` C API, but I found it too complex for my case (running a bunch of pure functions) and I have introduced the more briefly implementation ...
-
-TODO python example execution intructions ...
-
-TODO JS example execution instructions ...
-
-TODO C# example execution intructions ... (ChatGPT helped with the implementation of this simple program)
-
-Sometimes using `per-interpreter GIL`, CPUs are not fully utilize and I can only guess that the reason is not good enough context switching. The same situation we encounter with `Web Workers` ...
+There is already an implemention[1] of a Python interface for `interpreters` C API, but I found it too complex for my case (running a bunch of pure functions) and I have introduced the more briefly implementation.
 
 
-## Environment
-### Ubuntu
+### Environment preparation
+#### Install pyqt
 
 `sudo apt install python3-qtpy`
 
-### Conda env
+#### Create Conda env
 
 Firstly, install the `Conda` package manager if you do not have it yet: https://conda.io/projects/conda/en/latest/user-guide/install/index.html.
 
@@ -156,7 +158,20 @@ In order to create an environment, type the following commads:
 1. `conda install -c conda-forge mamba`  
 2. `mamba env create -f environment.yml --prefix=<path_to_env_dir>`  
 
-## Runner
+### A `Per-interpreter` runner*
+
+TODO python example execution intructions ...
+
+### [EXTRA] JS `Web-workers` runner*
+
+TODO JS example execution instructions ...
+
+### [EXTRA] C# `TPL` runner
+
+TODO C# example execution intructions ... (ChatGPT helped with the implementation of this simple program)
+
+\**Sometimes, on my machine with Ubuntu, using `per-interpreter GIL`, CPUs are not fully utilize. I can only guess that the reason is not good enough context switching, but I didnt make a deeper examination. The same situation we encounter with `Web Workers` and since those two approaches 
+share the same thread scheduler on my machine, I am leaning towards blaming a `thread scheduler` for the situation.*
 
 # Bilbiography
 <a name="b1"></a>[1] `Python interface for the "intepreters" C API`, https://github.com/jsbueno/extrainterpreters  
@@ -175,4 +190,6 @@ In order to create an environment, type the following commads:
 
 <a name="b8"></a>[8] wikipedia, `Web worker`, https://en.wikipedia.org/wiki/Web_worker
 
-[9] https://stackoverflow.com/a/65141099
+[9] https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-ii-demystifying-cpython-shared-objects-fce1ec86dd63
+
+[10] https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-ii-demystifying-cpython-shared-objects-fce1ec86dd63

@@ -1,4 +1,4 @@
-# Per-interpreter GIL for utilizing multiple cores within a single Python process
+# Per-interpreter GIL for utilizing multiple cores by a single Python process
 
 ## Intro
 
@@ -6,7 +6,7 @@ The repository is a small exercise of how one can use a newly introduced `Python
 
 The feature was accepted as a solution for multi-core `Python` and it is already available<sup>[1](#f1)</sup> through `Python/C API` starting from `Python` version `3.12`. Pythonic interface for the feature will come together with the next `Python` version `3.13` (coming out on October 2024).
 
-If you would like to skip the theoretical aspects and go straight to the practical example, please go right away to the section [Play with a per-interpreter GIL yourself](#playground).
+If you would like to skip the theoretical aspects and go straight to the practical example, please go to the section [Play with a per-interpreter GIL yourself](#playground).
 
 ## Technicalities 
 
@@ -34,17 +34,18 @@ A `python interpreter` is a computer program that converts python code into mach
 
 `GIL` simplifies developers lifes. For example, performing the most common operations on a dictionary shared between multiple threads will not result in a race condition or corruption of the data within the dictionary. Moreover, when you are reading or writing from a file or socket the GIL is released allowing multiple threads to run in parallel. The `GIL` is smart, it tries to help, you need to have more trust in `GIL`.
 
-#### What about pure python functions? Is it safe to execute them using multiple threads running at the same time, witihin a single process?
+#### What about pure python functions? Is it safe to disable GIL and execute bunch of pure functions on multiple threads?
 
-<a name="shared_state"></a>From the perspective of a Python developer who defines a pure function based solely on the absence of explicit shared state manipulation within the function's code, there are still implicit actions performed by the CPython interpreter that can modify shared state.
+<a name="shared_state"></a>From the perspective of a Python developer who defines a pure function based solely on the absence of explicit shared state manipulation within the function's code, there are still implicit actions performed by the CPython interpreter that can modify shared state. As an example of such implicit actions, lets consider coexistence of two mechanisms `Reference Counts` and `String interning`.
 
-TODO clean this mess up
 
-For example, `Reference Counts` + `String interning`.
+#### What are `Reference Counts`?
 
-`Reference Counts` is a mechanism that involves such implicit actions. Every object in Python has an associated reference count that the garbage collector uses to determine when its memory can be freed. When you create, copy, or delete any Python object (even locals within pure functions), it affects the reference count. This operation must be protected by the GIL because it changes the global state of the interpreter. Without the GIL, two threads that increment or decrement the reference count of the same object concurrently might corrupt the reference count, leading to memory leaks or premature deallocation.
+Every object in Python has an associated `reference count` that the garbage collector uses to determine when its memory can be freed. When you create, copy, or delete any Python object, it affects the reference count. This operation must be protected by the GIL because it changes the global state of the interpreter. Without the GIL, two threads that increment or decrement the reference count of the same object concurrently might corrupt the reference count, leading to memory leaks or premature deallocation.
 
-Nice article about `String interning`: https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-iii-string-interning-625d3c7319de 
+#### What is `String interning`?
+
+Here (TODO link https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-iii-string-interning-625d3c7319de ) you can find a really helpful article on  `String interning`. 
 
 TLTR:
 
@@ -58,11 +59,51 @@ Python tries its best to exclusively intern the strings that are most likely to 
 
 Using shared cached objects in this manner and manipulating their reference counts unsafely can result in serious issues. This example highlights why it's crucial for extension modules, especially those releasing the GIL, to manage the lifecycle and reference counts of Python objects correctly.
 
+```python
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from functools import partial
+
+
+@dataclass
+class Person:
+    name: str
+    surname: str
+
+    @property
+    def surname_object_address(self) -> str:
+        return hex(id(self.surname))
+
+
+def get_jackson_sibling(name: str) -> Person:
+    return Person(
+        name=name,
+        surname='Jackson'
+    )
+
+tasks = []
+
+with ThreadPoolExecutor(2) as executor:
+    for name in ['Michael', 'Freddy']:
+        task = executor.submit(partial(get_jackson_sibling, name))
+        tasks.append(task)
+    
+siblings = [task.result() for task in tasks]
+
+for sibling in siblings:
+    print(f'Hello {sibling.name}!')
+
+if siblings[0].surname_object_address == siblings[1].surname_object_address:
+    address = siblings[0].surname_object_address
+    print(f'How dare you Python! Both objects have the same address = {address}')
 ```
->>> a = "Michael"
->>> b = "Michael"
->>> id(a), id(b), a is b
-(139691346551904, 139691346551904, True)
+
+Output:
+
+```
+Hello Michael!
+Hello Freddy!
+How dare you Python! Both objects have the same address = 0x7fb1080be9f0
 ```
 
 ![alt text](images/sharing.png)  
@@ -80,26 +121,19 @@ I would like to take a step back and shortly describe my interest in the `Per-in
 
 #### Bulding python objects using data from files
 
-Once I was struggling with a speed of loading the input data for some computation program. Loading was taking several seconds because of loading multipl files with a table format data (excel/csv), laying on the storage.
+Once I was struggling with a speed of loading the input data for some computation program. Loading was taking several seconds because of sequantial loading of multiple files with a table format data (excel/csv), laying on the storage. Using `multi-threading` it gave a solid speed-up. Unfortunetly, due to GIL existence and some CPU oprations involved, I was utilizing only a single core.  
 
-I tried to use multi-threading and load each file in a seperate thread. 
-It gave a solid speed-up of the loading. Unfortunetly, due to GIL existence, all CPU operations were been able to execute on a single core at a given time.
-
-#### Multi-processing as a way to do it
-
-Since there are some CPU operations involved (loading data into memory as `pdtable` objects) 
-I have tried to use multi-processing instead. The performance, when it comes to speed, was pretty the same as using multi-threading. The main process needs to spawn itself multiple times and it takes some time. I have experienced a long spawning time while debugging in VSCode, on the regular run it is not that slow.
+I have tried to use `multi-processing` instead. The performance, when it comes to speed, was pretty the same as using multi-threading. The main process needs to spawn itself multiple times and it takes some time. I have experienced a long spawning time while debugging in VSCode, on the regular run it is not that slow.
 
 #### We should not need multiple processes.
 
-But why do we even need to create a seperate process for such a pure function execution? We do not care about synchronization of any data here and we do not need to ensure thread-safe sharing of any explicity defined state. We just want to run a function with a specific input and get the results back to the main thread (the one that starts and runs a `Python` interpreter). Shouldn't it be allowed to run on mutli-cores? I emphasize again, we do not care about any data/state synchronization. As I mentioned [here](#shared_state), it is not possible, due to a shared state implicite created by `Python` intepreter. 
+But why do we even need to create a seperate process for such a pure function execution? We do not care about any explicity defined data/state synchronization. Shouldn't it be allowed to run on mutli-cores? As I mentioned [here](#shared_state), it is not possible, due to a shared state implicite created by `Python` intepreter. 
 
 #### Here it comes ... A Per-Interpreter GIL.
 
-After some time, I was reading about new features of `python` version `3.12` and I came across `PEP 684 – A Per-Interpreter GIL`[5]. 
-Somebody creates an implementation of the real multi-core behaviour in `Python`! First version of `Python` was released in 1991. Multiple cores processors started to be used on daily basis a bit later (The first commercial multicore processor architecture was Power 4 processor developed by IBM in 2001 [TODO source]). It seems like there is a lot of work to be done 
-since the whole architecture of python is not really supportive to the idea. The work already started and is ongoing for a few years with 
-multiple PEP's with parts supporting the final implementation.
+While I was reading about new features of `python` version `3.12` and I came across `PEP 684 – A Per-Interpreter GIL`[5]. 
+Somebody creates an implementation of the real multi-core behaviour in `Python`! First version of `Python` was released in 1991. Multiple cores processors started to be used on daily basis a bit later (The first commercial multicore processor architecture was POWER4 processor developed by IBM in 2001[[11]](#b11)). The work on a `Per-interpreter GIL` is ongoing for a few years with 
+multiple PEP's supporting the final implementation. Curretly (`python 3.12`) we can use `Python/C API` to play around with the new multi-core approach. 
 
 #### What other programming languages can offer on the multi-core approach? 
 
@@ -197,6 +231,8 @@ share the same thread scheduler on my machine, I am leaning towards blaming a `t
 
 <a name="b8"></a>[8] wikipedia, `Web worker`, https://en.wikipedia.org/wiki/Web_worker
 
-[9] https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-ii-demystifying-cpython-shared-objects-fce1ec86dd63
+<a name="b9"></a>[9] https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-ii-demystifying-cpython-shared-objects-fce1ec86dd63
 
-[10] https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-ii-demystifying-cpython-shared-objects-fce1ec86dd63
+<a name="b10"></a>[10] https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-ii-demystifying-cpython-shared-objects-fce1ec86dd63
+
+<a name="b11"></a>[11] wikipedia, POWER4, https://en.wikipedia.org/wiki/POWER4

@@ -45,9 +45,9 @@ Every object in Python has an associated `reference count` that the garbage coll
 
 #### What is `String interning`?
 
-Here (TODO link https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-iii-string-interning-625d3c7319de ) you can find a really helpful article on  `String interning`. 
+[Here](#b12) you can find a really helpful article on  `String interning`. I encourage you to read the whole article. 
 
-TLTR:
+TL;TR:
 
 Python tries its best to exclusively intern the strings that are most likely to be reused — identifier strings. Identifier strings include the following:
 
@@ -106,12 +106,12 @@ Hello Freddy!
 How dare you Python! Both objects have the same address = 0x7fb1080be9f0
 ```
 
+As you can see in the example above, python can be tricky sometimes. But it has reason for that. `String interning` reduces memory usage.
+
 ![alt text](images/sharing.png)  
 Figure 1. *Demystifying CPython Shared Objects* [[10]](#b10)
 
-To conclude:
-
-*Is it safe to not using GIL for executing pure python functions in multiple threads?*
+#### Conclusion: *Is it safe to not using GIL for executing pure python functions in multiple threads?*
 
 No. Those functions aren't pure on the level on which the GIL operates. There is still a state shared by multiple threads while exececuting on the python intepreter level.
 
@@ -123,7 +123,7 @@ I would like to take a step back and shortly describe my interest in the `Per-in
 
 Once I was struggling with a speed of loading the input data for some computation program. Loading was taking several seconds because of sequantial loading of multiple files with a table format data (excel/csv), laying on the storage. Using `multi-threading` it gave a solid speed-up. Unfortunetly, due to GIL existence and some CPU oprations involved, I was utilizing only a single core.  
 
-I have tried to use `multi-processing` instead. The performance, when it comes to speed, was pretty the same as using multi-threading. The main process needs to spawn itself multiple times and it takes some time. I have experienced a long spawning time while debugging in VSCode, on the regular run it is not that slow.
+I have tried to use `multi-processing` instead. The performance, when it comes to speed, was pretty the same as using multi-threading. The main process needs to spawn itself multiple times and it takes some time. I have experienced a long spawning time while debugging in VSCode, on the regular run it was not that slow.
 
 #### We should not need multiple processes.
 
@@ -131,7 +131,7 @@ But why do we even need to create a seperate process for such a pure function ex
 
 #### Here it comes ... A Per-Interpreter GIL.
 
-While I was reading about new features of `python` version `3.12` and I came across `PEP 684 – A Per-Interpreter GIL`[5]. 
+While I was reading about new features of `python` version `3.12`, I came across `PEP 684 – A Per-Interpreter GIL`[5]. 
 Somebody creates an implementation of the real multi-core behaviour in `Python`! First version of `Python` was released in 1991. Multiple cores processors started to be used on daily basis a bit later (The first commercial multicore processor architecture was POWER4 processor developed by IBM in 2001[[11]](#b11)). The work on a `Per-interpreter GIL` is ongoing for a few years with 
 multiple PEP's supporting the final implementation. Curretly (`python 3.12`) we can use `Python/C API` to play around with the new multi-core approach. 
 
@@ -147,11 +147,15 @@ Communication between threads in `Python` can be done through shared memory or t
 together with version 4.0 of the .NET Framework (year 2010).
 
 
-#### Are there any real-life use cases for a per-Interpreter GIL?  
+#### Are there any real-life use cases for a Per-Interpreter GIL?  
 
-TODO ... https://peps.python.org/pep-0684/#motivation
+[Here](https://peps.python.org/pep-0684/#motivation) you can find a motivation behind a Per-interpreter GIL together with benefits coming from it.
 
-Benchmark from the yt video [3] ...
+A promising benchmark was performed and shown by the PEP author Eric Snow on PyCon US 2023[[3]](#b3). I encourage you to watch the full video.
+
+TL;DW
+
+TODO
 
 #### Are there any alternatives for utilizing multiple cores within a single Python process?
 
@@ -235,4 +239,6 @@ share the same thread scheduler on my machine, I am leaning towards blaming a `t
 
 <a name="b10"></a>[10] https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-ii-demystifying-cpython-shared-objects-fce1ec86dd63
 
-<a name="b11"></a>[11] wikipedia, POWER4, https://en.wikipedia.org/wiki/POWER4
+<a name="b11"></a>[11] wikipedia, `POWER4`, https://en.wikipedia.org/wiki/POWER4
+
+<a name="b12"></a> [12] Brennan D Baraban, `String Interning`, https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-iii-string-interning-625d3c7319de

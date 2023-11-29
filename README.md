@@ -151,11 +151,18 @@ together with version 4.0 of the .NET Framework (year 2010).
 
 [Here](https://peps.python.org/pep-0684/#motivation) you can find a motivation behind a Per-interpreter GIL together with benefits coming from it.
 
+There is one use case that comes to my mind: we need to create a server that handles complex requests. We need a single entrypoint for each request. A complex request contains many computation parts that can be parralized. Creating a seperate process for each part and then communicating the results can slow down the performance. In such cases, I guess we can safe some "overhead" time using Per-interpreter GIL.
+
 A promising benchmark was performed and shown by the PEP author Eric Snow on PyCon US 2023[[3]](#b3). I encourage you to watch the full video.
 
 TL;DW
 
-TODO
+Eric got some results, as he himself desribe them, magical results.
+
+![alt text](images/magic.png)  
+Figure 3. *Comparison between clients based on thread, process and Per-interpreter GIL.*
+
+TODO Those results seems to be not possible.
 
 #### Are there any alternatives for utilizing multiple cores within a single Python process?
 

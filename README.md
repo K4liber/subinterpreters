@@ -10,7 +10,13 @@ If you would like to skip the theoretical aspects and go straight to the practic
 
 ## Technicalities 
 
+I encourage you to read the `Technicalities` section in order to more or less understand how `Per-interpreter GIL` works.
+
 #### Units of program execution
+
+[Here](#b2) you can find a compressed overview about `Threads` and `Processes`.
+
+TL;DR
 
 `Thread` and `Process` are two fundamental units of execution. Although both are related to how a computer executes tasks, they have different characteristics and serve different roles. It is recommended to understand what is showed on the image below in order to proceed with the article.
 
@@ -18,13 +24,11 @@ If you would like to skip the theoretical aspects and go straight to the practic
 Figure 1. *Typical relationsip between
 threads and processes* [[2]](#b2)
 
-#### What is a thread scheduler?
-
-The `thread scheduler` is a fundamental part of modern operating systems and programming environments that manages the execution of threads in a multi-threaded application. Its primary responsibility is to allocate CPU time to different threads, ensuring fair execution and efficient utilization of system resources. Thread scheduling is crucial for achieving concurrency, responsiveness, and efficient use of hardware. [https://medium.com/@sadigrzazada20/the-thread-scheduler-4c40c6143009]
+The `thread scheduler` is a fundamental part of modern operating systems and programming environments that manages the execution of threads in a multi-threaded application. Its primary responsibility is to allocate CPU time to different threads, ensuring fair execution and efficient utilization of system resources. Thread scheduling is crucial for achieving concurrency, responsiveness, and efficient use of hardware[[13]](#b13).
 
 #### What is a python interpreter?
 
-A `python interpreter` is a computer program that converts python code into machine code.
+Python is an interpreted language. Interpreted languages do not need to be compiled to run. A program called an interpreter runs Python code "on the fly". Check out [Interpreter wikipedia article](#b14) if you would like to dive deeper.
 
 #### What is GIL?
 
@@ -47,7 +51,7 @@ Every object in Python has an associated `reference count` that the garbage coll
 
 [Here](#b12) you can find a really helpful article on  `String interning`. I encourage you to read the whole article. 
 
-TL;TR:
+TL;DR
 
 Python tries its best to exclusively intern the strings that are most likely to be reused — identifier strings. Identifier strings include the following:
 
@@ -178,15 +182,15 @@ hard to achieve since the initial decision on
 the language behaviour. `GIL` is a simple solution for the thread-safety problems, but 
 it is a blocker for utilizing multiple cores.
 - `Per-interpreter GIL` seems like a promising 
-approach for multi-core utilization. But lets wait for 3.13 and a solid interface, together with 
-external modules support.
+approach for multi-core utilization. But lets wait for 3.13 and a python interface. I hope for the 
+external modules support and the more mature implementation based on gathered experiences.
 - `Python` has a lot of cons, but a lot of of people still love it, mostly due to the  great, initial simplicity of writing programs in `Python`. Prototyping with `Python` is easy and fast.
 
 ## <a name="playground"></a>Play with a per-interpreter GIL yourself
 
 I have created a simple application with a GUI (using QT) in order to show an example of using `Subinterpreter` as an unit of execution. I strongly encourage you to playaround with the code.
 
-There is already an implemention[1] of a Python interface for `interpreters` C API, but I found it too complex for my case (running a bunch of pure functions) and I have introduced the more briefly implementation.
+There is already an implemention[[1]](#b1) of a Python interface for `interpreters` C API, but I found it too complex for my case (running a bunch of pure functions) and I have introduced the more briefly implementation.
 
 
 ### Environment preparation
@@ -209,19 +213,43 @@ In order to create an environment, type the following commads:
 
 ### A `Per-interpreter` runner<sup>[2](#f2)</sup>
 
-TODO python example execution intructions ...
+In order to run an example application using `Per-interpreter GIL` type:  
+
+`conda activate <path_to_env_dir>`    
+`python main_qt.py`
+
+
+The application allows to compare python performance using tree different workers:
+1. Thread-based
+2. Process-based
+3. Subinterpreter-based (thread-based with `Per-interpreter GIL`)
+
+The implementation of a subinterpreter-based runner can be found in the [subinterpreters module](runner/subinterpreters.py). One can try more sublime callables than just generating a figonacci sequence by modifying the [callables module](job/callables.py).
 
 ### [EXTRA] JS `Web-workers` runner<sup>[2](#f2)</sup>
 
-TODO JS example execution instructions ...
+If you would like to see the JS `Web-workers` performance on the similar task, please type the follwing commands:
+
+`cd js-web-workers`  
+`python -m http.server`  
+
+and go to `http://0.0.0.0:8000/` in the browser.
+
+Communication through message passing is very intuitive. Because of that, I like `JS` even more. On top of that, I didnt realise how much JS is better than python when it comes to computations performance. Now I know why my browser is mining crypto on some web-pages. From the parasite perspective, mining is free and pretty efficient at the same time. BTW. I personally think that crypto mining is a waste of energy. Please spent your (or others) resources in more useful way.
 
 ### [EXTRA] C# `TPL` runner
 
-TODO C# example execution intructions ... (ChatGPT helped with the implementation of this simple program)
+If you would like to run the example, please make sure that you have a `.NET` environment installed. Then, type the following commands:
+
+`cd DotNetTPL`  
+`dotnet run Program.cs`
+
+My experience in `C#` is so small that a Junior C# developer could point it doesn't really exist. That's why I'd like to tip my hat to ChatGPT as a thank you for helping me create this example. The example is the same performance test as we did with `Python` and `JS`. I use `BlockingCollection` as a communication mechanism between the main thread and workers. The implementation seems to much Javaish for me, as so the whole `C#` is. I guess I do not really like it since I do not deeply understand it.
+
 
 # Footnotes
 
-<a name="f1"></a>*1. Still me need to wait for python modules to be compatible with `Per-interpreter GIL` approach. For example, `numpy` is not working yet ... TODO make it clear.*  
+<a name="f1"></a>*1. Still we need to wait for python extension modules to be compatible with `Per-interpreter GIL` approach. For example, I was not able to import `numpy` in the code running with a subinterpreter. Maybe there is an easy workaround for that, but I didn't spend a lot of time to make it work.*  
 <a name="f2"></a>*2. Sometimes, on my machine with Ubuntu, CPUs are not fully utilize while using `per-interpreter GIL`. I can only guess that the reason is not good enough context switching, but I didnt make a deeper examination. The same situation we encounter with `Web Workers` and since those two approaches 
 share the same thread scheduler on my machine, I am leaning towards blaming a `thread scheduler` for the situation.*
 
@@ -249,3 +277,7 @@ share the same thread scheduler on my machine, I am leaning towards blaming a `t
 <a name="b11"></a>[11] wikipedia, `POWER4`, https://en.wikipedia.org/wiki/POWER4
 
 <a name="b12"></a> [12] Brennan D Baraban, `String Interning`, https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-iii-string-interning-625d3c7319de
+
+<a name="b13"></a> [13] Sadigrzazada, `The thread scheduler`, https://medium.com/@sadigrzazada20/the-thread-scheduler-4c40c6143009
+
+<a name="b14"></a> [14] wikipedia, `Interpreter (computing)`, https://en.wikipedia.org/wiki/Interpreter_(computing)

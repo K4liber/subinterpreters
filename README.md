@@ -1,59 +1,66 @@
-# Per-interpreter GIL for utilizing multiple cores by a single Python process
+# Utilizing Multiple Cores in a Single Python Process with Per-interpreter GIL
 
 ## Intro
 
-The repository is a small exercise of how one can use a newly introduced `Python` feature called a `Per-interpreter GIL`[[5]](#b5). `Per-interpreter GIL` allows for utilizing multiple cores within a single Python process.
+This repository presents a practical exploration of a relatively new feature in Python known as the `Per-interpreter GIL`[[5]](#b5). The `Per-interpreter GIL` enables the utilization of multiple cores within a single Python process.
 
-The feature was accepted as a solution for multi-core `Python` and it is already available<sup>[1](#f1)</sup> through `Python/C API` starting from `Python` version `3.12`. Pythonic interface for the feature will come together with the next `Python` version `3.13` (coming out on October 2024).
+This feature is accessible through the `Python/C API` starting from Python version 3.12<sup>[1](#f1)</sup>. A Pythonic interface for this feature is anticipated to be released with Python version 3.13 (coming out on October 2024).
 
-If you would like to skip the theoretical aspects and go straight to the practical example, please go to the section [Play with a per-interpreter GIL yourself](#playground).
+Those eager to witness the `Per-interpreter GIL` in action can jump directly to the demo section titled [Play with Per-interpreter GIL yourself](#playground).
 
 ## Technicalities 
 
-I encourage you to read the `Technicalities` section in order to more or less understand how `Per-interpreter GIL` works.
+Before delving into the `Per-interpreter GIL`, it is beneficial to grasp the underlying concepts of threads and processes in the python context.
 
-#### Units of program execution
 
-[Here](#b2) you can find a compressed overview about `Threads` and `Processes`.
+#### Threads vs. Processes: A Quick Summary*
 
-TL;DR
+**For a more detailed explanation, please see the [overview of Threads and Processes](#b2).*
 
-`Thread` and `Process` are two fundamental units of execution. Although both are related to how a computer executes tasks, they have different characteristics and serve different roles. It is recommended to understand what is showed on the image below in order to proceed with the article.
+`Threads` and `Processes` are two fundamental units of program execution. While both are integral to how a computer performs tasks, they possess distinct characteristics and fulfill different purposes. 
+
+`Threads`: Lightweight units of execution that share the same memory space within a process, allowing for efficient task parallelism within a single application.
+
+`Processes`: Independent units of execution, each with its own memory space, providing strong isolation but requiring more resources and complexity to communicate between them.
+
+For a visual representation of how threads typically interact with processes, refer to Figure 1 below.
 
 ![alt text](images/ThreadDiagram.png)  
 Figure 1. *Typical relationsip between
 threads and processes* [[2]](#b2)
 
-The `thread scheduler` is a fundamental part of modern operating systems and programming environments that manages the execution of threads in a multi-threaded application. Its primary responsibility is to allocate CPU time to different threads, ensuring fair execution and efficient utilization of system resources. Thread scheduling is crucial for achieving concurrency, responsiveness, and efficient use of hardware[[13]](#b13).
+`Thread scheduler` is a fundamental part of modern operating systems and programming environments that manages the execution of threads in a multi-threaded application. Its primary responsibility is to allocate CPU time to different threads, ensuring fair execution and efficient utilization of system resources. Thread scheduling is crucial for achieving concurrency, responsiveness, and efficient use of hardware[[13]](#b13).
 
 #### What is a python interpreter?
 
-Python is an interpreted language. Interpreted languages do not need to be compiled to run. A program called an interpreter runs Python code "on the fly". Check out [Interpreter wikipedia article](#b14) if you would like to dive deeper.
+Python is an interpreted language. Interpreted languages do not need to be compiled to run. A program called an interpreter processes Python code at runtime, or "on the fly." For a more in-depth explanation of interpreters, you might find the [Interpreter Wikipedia article](#b14) helpful.
 
 #### What is GIL?
 
-*The mechanism used by the CPython interpreter to assure that only one thread executes Python bytecode at a time. This simplifies the CPython implementation by making the object model (including critical built-in types such as dict) implicitly safe against concurrent access.*[[2]]https://docs.python.org/3/glossary.html#term-global-interpreter-lock
+*The mechanism used by the CPython interpreter to assure that only one thread executes Python bytecode at a time. This simplifies the CPython implementation by making the object model (including critical built-in types such as dict) implicitly safe against concurrent access.*[[15]](#b15)
 
-#### Is GIL only slowing down my multi-threaded programs or is it any useful?
+#### Does the GIL Only Slow Down Multi-threaded Programs, or Does It Have Benefits?
 
-`GIL` simplifies developers lifes. For example, performing the most common operations on a dictionary shared between multiple threads will not result in a race condition or corruption of the data within the dictionary. Moreover, when you are reading or writing from a file or socket the GIL is released allowing multiple threads to run in parallel. The `GIL` is smart, it tries to help, you need to have more trust in `GIL`.
 
-#### What about pure python functions? Is it safe to disable GIL and execute bunch of pure functions on multiple threads?
+While the `GIL` can limit the execution speed of multi-threaded Python programs, it greatly simplifies development. For instance, performing operations on a shared dictionary across multiple threads will not lead to race conditions or data corruption. 
 
-<a name="shared_state"></a>From the perspective of a Python developer who defines a pure function based solely on the absence of explicit shared state manipulation within the function's code, there are still implicit actions performed by the CPython interpreter that can modify shared state. As an example of such implicit actions, lets consider coexistence of two mechanisms `Reference Counts` and `String interning`.
+Furthermore, the `GIL` is released during I/O operations, such as reading or writing to a file or socket, which allows threads to run in parallel in these scenarios. The GIL is designed to facilitate multi-threading, and understanding its behavior can help developers write more efficient code.
+
+#### Can We Disable the GIL for Executing Pure Python Functions?
+
+
+<a name="shared_state"></a>Disabling the GIL to execute a set of pure Python functions across multiple threads might seem safe, especially if those functions do not appear to manipulate shared state explicitly. However, the CPython interpreter performs certain implicit actions that may affect shared state. For example, operations altering `reference counts` and `string interning` are two mechanisms that involve shared state.
 
 
 #### What are `Reference Counts`?
 
-Every object in Python has an associated `reference count` that the garbage collector uses to determine when its memory can be freed. When you create, copy, or delete any Python object, it affects the reference count. This operation must be protected by the GIL because it changes the global state of the interpreter. Without the GIL, two threads that increment or decrement the reference count of the same object concurrently might corrupt the reference count, leading to memory leaks or premature deallocation.
+In Python, every object has an associated `reference count` that the garbage collector utilizes to determine when its memory can be released. Creating, copying, or deleting any Python object impacts the reference count. These operations must be protected by the GIL because they alter the interpreter's global state. Without the GIL, concurrent reference count modifications by two threads on the same object could corrupt the count, leading to memory leaks or premature deallocation.
 
 #### What is `String interning`?
 
-[Here](#b12) you can find a really helpful article on  `String interning`. I encourage you to read the whole article. 
+For a comprehensive explanation of `string interning`, please refer to [this article](#b12).
 
-TL;DR
-
-Python tries its best to exclusively intern the strings that are most likely to be reused — identifier strings. Identifier strings include the following:
+Python optimizes memory usage by interning strings that are likely to be reused, particularly identifier strings. These strings include:
 
 - Function and class names
 - Variable names
@@ -61,7 +68,9 @@ Python tries its best to exclusively intern the strings that are most likely to 
 - Dictionary keys
 - Attribute names
 
-Using shared cached objects in this manner and manipulating their reference counts unsafely can result in serious issues. This example highlights why it's crucial for extension modules, especially those releasing the GIL, to manage the lifecycle and reference counts of Python objects correctly.
+
+Unsafe manipulations of shared cached objects and their reference counts can lead to critical errors. This is why extension modules, especially those that release the GIL, must handle reference counts and the lifecycle of Python objects with care.
+
 
 ```python
 from concurrent.futures import ThreadPoolExecutor
@@ -71,35 +80,35 @@ from functools import partial
 
 @dataclass
 class Person:
-    name: str
-    surname: str
+    first_name: str
+    last_name: str
 
     @property
-    def surname_object_address(self) -> str:
-        return hex(id(self.surname))
+    def last_name_object_address(self) -> str:
+        return hex(id(self.last_name))
 
 
 def get_jackson_sibling(name: str) -> Person:
     return Person(
-        name=name,
-        surname='Jackson'
+        first_name=name,
+        last_name='Jackson'
     )
 
 tasks = []
 
 with ThreadPoolExecutor(2) as executor:
-    for name in ['Michael', 'Freddy']:
-        task = executor.submit(partial(get_jackson_sibling, name))
+    for first_name in ['Michael', 'Freddy']:
+        task = executor.submit(partial(get_jackson_sibling, first_name))
         tasks.append(task)
     
 siblings = [task.result() for task in tasks]
 
 for sibling in siblings:
-    print(f'Hello {sibling.name}!')
+    print(f'Hello {sibling.first_name}!')
 
-if siblings[0].surname_object_address == siblings[1].surname_object_address:
-    address = siblings[0].surname_object_address
-    print(f'How dare you Python! Both objects have the same address = {address}')
+if siblings[0].last_name_object_address == siblings[1].last_name_object_address:
+    address = siblings[0].last_name_object_address
+    print(f'Same memory address detected: {address}')
 ```
 
 Output:
@@ -107,17 +116,17 @@ Output:
 ```
 Hello Michael!
 Hello Freddy!
-How dare you Python! Both objects have the same address = 0x7fb1080be9f0
+Same memory address detected: 0x7fb1080be9f0
 ```
 
-As you can see in the example above, python can be tricky sometimes. But it has reason for that. `String interning` reduces memory usage.
+As demonstrated, Python sometimes reuses objects for efficiency reasons, such as with string interning, reducing memory usage.
 
 ![alt text](images/sharing.png)  
 Figure 1. *Demystifying CPython Shared Objects* [[10]](#b10)
 
-#### Conclusion: *Is it safe to not using GIL for executing pure python functions in multiple threads?*
+#### Conclusion: Is it Safe to Disable the GIL for Pure Python Functions in Multi-threaded Execution?
 
-No. Those functions aren't pure on the level on which the GIL operates. There is still a state shared by multiple threads while exececuting on the python intepreter level.
+No, it is not safe. Even if functions appear pure at the code level, they may not be pure in the context of the CPython interpreter, which involves shared state access during execution.
 
 ## Per-interpreter GIL
 
@@ -174,9 +183,9 @@ https://peps.python.org/pep-0684/#rationale
 
 #### What have we learned?
 
-- `Python` PEPs can sometimes be very broad and require a lot of work.
+- Python Enhancement Proposals (PEPs) happens to be very broad and require a lot of work.
 - Initial decisions have a huge impact on the following features of a 
-programming language (e.g. GIL).
+programming language implementation (e.g. GIL in CPython).
 - The full multi-core potential in `Python` is 
 hard to achieve since the initial decision on 
 the language behaviour. `GIL` is a simple solution for the thread-safety problems, but 
@@ -186,7 +195,7 @@ approach for multi-core utilization. But lets wait for 3.13 and a python interfa
 external modules support and the more mature implementation based on gathered experiences.
 - `Python` has a lot of cons, but a lot of of people still love it, mostly due to the  great, initial simplicity of writing programs in `Python`. Prototyping with `Python` is easy and fast.
 
-## <a name="playground"></a>Play with a per-interpreter GIL yourself
+## <a name="playground"></a>Play with a Per-interpreter GIL yourself
 
 I have created a simple application with a GUI (using QT) in order to show an example of using `Subinterpreter` as an unit of execution. I strongly encourage you to playaround with the code.
 
@@ -244,13 +253,13 @@ If you would like to run the example, please make sure that you have a `.NET` en
 `cd DotNetTPL`  
 `dotnet run Program.cs`
 
-My experience in `C#` is so small that a Junior C# developer could point it doesn't really exist. That's why I'd like to tip my hat to ChatGPT as a thank you for helping me create this example. The example is the same performance test as we did with `Python` and `JS`. I use `BlockingCollection` as a communication mechanism between the main thread and workers. The implementation seems to much Javaish for me, as so the whole `C#` is. I guess I do not really like it since I do not deeply understand it.
+My experience in `C#` is so small that a Junior C# developer could point it doesn't really exist. That's why I'd like to tip my hat to ChatGPT as a thank you for helping me create this example. The example is the same performance test as we did with `Python` and `JS`. I use `BlockingCollection` as a communication mechanism between the main thread and workers threads. The implementation seems to much Javaish for me, as so the whole `C#` is. I guess I do not really like it since I do not deeply understand it.
 
 
 # Footnotes
 
 <a name="f1"></a>*1. Still we need to wait for python extension modules to be compatible with `Per-interpreter GIL` approach. For example, I was not able to import `numpy` in the code running with a subinterpreter. Maybe there is an easy workaround for that, but I didn't spend a lot of time to make it work.*  
-<a name="f2"></a>*2. Sometimes, on my machine with Ubuntu, CPUs are not fully utilize while using `per-interpreter GIL`. I can only guess that the reason is not good enough context switching, but I didnt make a deeper examination. The same situation we encounter with `Web Workers` and since those two approaches 
+<a name="f2"></a>*2. Sometimes, on my machine with Ubuntu, CPUs are not fully utilize while using `Per-interpreter GIL`. I can only guess that the reason is not good enough context switching, but I didnt make a deeper examination. The same situation we encounter with `Web Workers` and since those two approaches 
 share the same thread scheduler on my machine, I am leaning towards blaming a `thread scheduler` for the situation.*
 
 # Bilbiography
@@ -281,3 +290,5 @@ share the same thread scheduler on my machine, I am leaning towards blaming a `t
 <a name="b13"></a> [13] Sadigrzazada, `The thread scheduler`, https://medium.com/@sadigrzazada20/the-thread-scheduler-4c40c6143009
 
 <a name="b14"></a> [14] wikipedia, `Interpreter (computing)`, https://en.wikipedia.org/wiki/Interpreter_(computing)
+
+<a name="b15"></a> [15] python.org, `Global Interpreter Lock`, https://docs.python.org/3/glossary.html#term-global-interpreter-lock

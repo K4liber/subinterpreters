@@ -130,137 +130,138 @@ No, it is not safe. Even if functions appear pure at the code level, they may no
 
 ## Per-interpreter GIL
 
-I would like to take a step back and shortly describe my interest in the `Per-interpreter GIL`.
+Let's take a step back to discuss my interest in the per-interpreter GIL feature.
 
 #### Bulding python objects using data from files
 
-Once I was struggling with a speed of loading the input data for some computation program. Loading was taking several seconds because of sequantial loading of multiple files with a table format data (excel/csv), laying on the storage. Using `multi-threading` it gave a solid speed-up. Unfortunetly, due to GIL existence and some CPU oprations involved, I was utilizing only a single core.  
+In a past project, I faced challenges with the speed of loading input data. It was taking several seconds because of sequantial loading of multiple files with a table format data (excel/csv).
 
-I have tried to use `multi-processing` instead. The performance, when it comes to speed, was pretty the same as using multi-threading. The main process needs to spawn itself multiple times and it takes some time. I have experienced a long spawning time while debugging in VSCode, on the regular run it was not that slow.
+`Multi-threading` improved the speed noticeably. Unfortunetly, due to GIL existence and some CPU operations involved, I was restricted to utilizing, not a full potential of my multiple cores machine, but just a single core.
 
-#### We should not need multiple processes.
+Switching to `multi-processing` seemed promising, but the performance gains were marginal compared to multi-threading. Spawning multiple processes, especially during debugging in VSCode, introduced significant overhead, although the impact was less pronounced during regular runs.
 
-But why do we even need to create a seperate process for such a pure function execution? We do not care about any explicity defined data/state synchronization. Shouldn't it be allowed to run on mutli-cores? As I mentioned [here](#shared_state), it is not possible, due to a shared state implicite created by `Python` intepreter. 
+#### The Case for Single-Process, Multi-Core Execution
 
-#### Here it comes ... A Per-Interpreter GIL.
+Why do we need to create a separate process for executing what appears to be pure functions? Ideally, such functions should be able to run on multiple cores without explicitly shared data or state synchronization. However, as previously discussed [here](#shared_state), this is not feasible due to the shared state implicitly managed by the Python interpreter.
 
-While I was reading about new features of `python` version `3.12`, I came across `PEP 684 – A Per-Interpreter GIL`[5]. 
-Somebody creates an implementation of the real multi-core behaviour in `Python`! First version of `Python` was released in 1991. Multiple cores processors started to be used on daily basis a bit later (The first commercial multicore processor architecture was POWER4 processor developed by IBM in 2001[[11]](#b11)). The work on a `Per-interpreter GIL` is ongoing for a few years with 
-multiple PEP's supporting the final implementation. Curretly (`python 3.12`) we can use `Python/C API` to play around with the new multi-core approach. 
+#### The Advent of Per-Interpreter GIL
 
-#### What other programming languages can offer on the multi-core approach? 
+While exploring the new features of Python 3.12, I stumbled upon [PEP 684 – A Per-Interpreter GIL](#ref-to-PEP-684). To my excitement, a real possibility for multi-core execution within Python was introduced.
 
-`JavaScript`, similary as `Python`, is an interpreted language. One way to achieve concurrency in JavaScript is through the use of `Web Workers`, which are JavaScript scripts that run in the background and can perform tasks independently of the main thread. 
+Although Python's first release was in 1991, and multicore processors became more common in the following decade (with IBM's POWER4 processor in 2001 serving as a notable example[[11]](#b11)), true multi-core support in Python has been elusive.
 
-`Web Workers` (first published in 3 April 2009[[8]](#b8)) provide true concurrency for CPU-bound tasks by utilizing multiple cores. Web Workers create separate threads and run within a single process.
+With ongoing efforts and multiple supporting PEPs, Python 3.12 has finally brought us closer to this goal through the Python/C API that allows experimentation with this new approach to multi-core processing.
 
-Communication between threads in `Python` can be done through shared memory or thread-safe data structures, while `Web Workers` only communicate through message passing, which limits the potential for race conditions and makes state management simpler at the cost of being potentially less efficient for certain kinds of data exchange.
+#### What Do Other Programming Languages Offer for Multi-core Processing?
 
-`C#` seems to have (according to my minimal knowledge of `C#`) a pretty solid library for a multi-core utilization called `TPL`. It was released 
-together with version 4.0 of the .NET Framework (year 2010).
+`JavaScript`, much like `Python`, is an interpreted language. In JavaScript, concurrency can be achieved using `Web Workers`. These are scripts that run in the background and operate independently of the main execution thread.
 
+Introduced on April 3, 2009[[8]](#b8), `Web Workers` offer true concurrency for CPU-bound tasks by utilizing multiple cores. Each worker runs in a separate thread while staying within a single process.
 
-#### Are there any real-life use cases for a Per-Interpreter GIL?  
+Python allows threads to communicate using shared memory or thread-safe structures. In contrast, `Web Workers` rely solely on message passing for communication, reducing the risk of race conditions and simplifying state management but potentially less efficient for specific types of data interchange.
 
-[Here](https://peps.python.org/pep-0684/#motivation) you can find a motivation behind a Per-interpreter GIL together with benefits coming from it.
+In the realm of .NET, the `Task Parallel Library (TPL)` provides a robust framework for multi-core processing, released with version 4.0 of the .NET Framework in 2010.
 
-There is one use case that comes to my mind: we need to create a server that handles complex requests. We need a single entrypoint for each request. A complex request contains many computation parts that can be parralized. Creating a seperate process for each part and then communicating the results can slow down the performance. In such cases, I guess we can safe some "overhead" time using Per-interpreter GIL.
+#### Real-Life Applications of Per-Interpreter GIL
 
-A promising benchmark was performed and shown by the PEP author Eric Snow on PyCon US 2023[[3]](#b3). I encourage you to watch the full video.
+The motivation for introducing the per-interpreter GIL, and the benefits it provides, are outlined in detail [here on PEP 684](https://peps.python.org/pep-0684/#motivation).
 
-TL;DW
+Consider, for instance, a server tasked with handling complex requests where each request involves numerous computationally intensive operations that could be parallelized. Instead of spawning a separate process for each operation, which can introduce considerable communication overhead, the `Per-interpreter GIL` could optimize performance by reducing this overhead.
 
-Eric got some results, as he himself desribe them, magical results.
+Eric Snow presented an informative benchmark at PyCon US 2023[[3]](#b3), showcasing the potential of the per-interpreter GIL. For a comprehensive review, I recommend watching the full presentation.
+
+Summary of the Presentation:
+Eric Snow presented significant performance improvements under the per-interpreter GIL architecture.
 
 ![alt text](images/magic.png)  
 Figure 3. *Comparison between clients based on thread, process and Per-interpreter GIL.*
 
-TODO Those results seems to be not possible.
+Note: Some results presented (as the one presented on the Figure 3) may seem extraordinarily favorable and warrant further investigation to fully understand their implications.
 
-#### Are there any alternatives for utilizing multiple cores within a single Python process?
 
-https://peps.python.org/pep-0684/#rationale
+#### Alternatives for Multi-core Utilization in a Single Python Process
+
+For a discussion of alternative methods for leveraging multiple cores within a single Python process, refer to the rationale section of [PEP 684](https://peps.python.org/pep-0684/#rationale).
 
 #### What have we learned?
 
-- Python Enhancement Proposals (PEPs) happens to be very broad and require a lot of work.
-- Initial decisions have a huge impact on the following features of a 
-programming language implementation (e.g. GIL in CPython).
-- The full multi-core potential in `Python` is 
-hard to achieve since the initial decision on 
-the language behaviour. `GIL` is a simple solution for the thread-safety problems, but 
-it is a blocker for utilizing multiple cores.
-- `Per-interpreter GIL` seems like a promising 
-approach for multi-core utilization. But lets wait for 3.13 and a python interface. I hope for the 
-external modules support and the more mature implementation based on gathered experiences.
-- `Python` has a lot of cons, but a lot of of people still love it, mostly due to the  great, initial simplicity of writing programs in `Python`. Prototyping with `Python` is easy and fast.
+- Python Enhancement Proposals (PEPs) happens to be broad in scope and entail significant development effort.
+- Early design decisions can considerably influence future features and limitations of a programming language's implementation, as illustrated by the role of the `GIL` in `CPython`.
+- Achieving the full potential of multi-core processing in Python is challenging due to original language design choices. While the GIL offers a straightforward solution for thread safety, it also impedes the full utilization of multi-core architectures.
+- The `Per-interpreter GIL` presents a promising avenue for better multi-core utilization within Python. However, the true benefits and wider adoption await the release of Python 3.13, which promises a user-friendly Python interface. It is anticipated that support for external modules will mature as experiences are gathered and shared.
+- Despite its drawbacks, Python remains a widely favored language, largely due to its simplicity and the speed of development. It offers huge flexibility and continues to be an excellent language for prototyping.
 
 ## <a name="playground"></a>Play with a Per-interpreter GIL yourself
 
-I have created a simple application with a GUI (using QT) in order to show an example of using `Subinterpreter` as an unit of execution. I strongly encourage you to playaround with the code.
+A simple QT-based GUI application is provided in this repository to demonstrate using the `subinterpreter` as a unit of execution. You are encouraged to explore and experiment with the example code.
 
-There is already an implemention[[1]](#b1) of a Python interface for `interpreters` C API, but I found it too complex for my case (running a bunch of pure functions) and I have introduced the more briefly implementation.
-
+An implementation of a Python interface for the `interpreters` C API already exists[[1]](#b1), but it was more complex than necessary for my purposes (executing a set of pure functions). Therefore, I have crafted a more streamlined version.
 
 ### Environment preparation
-#### Install pyqt
+#### Install pyqt on Ubuntu
+
+To install PyQt, run the following command:  
 
 `sudo apt install python3-qtpy`
 
 #### Create Conda env
 
-Firstly, install the `Conda` package manager if you do not have it yet: https://conda.io/projects/conda/en/latest/user-guide/install/index.html.
+If you haven't installed `Conda` yet, follow the instructions here: [Install Conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html).
 
-I am not a huge fan of a `Conda` package manager since it is really slow. Using `mamba`, a re-implementation of `Conda` make the `Conda` environemnts managing acceptable when it comes to timing of creating/updating python environments.
+While Conda can sometimes be slow, using `mamba`—a fast re-implementation of Conda—can help speed up environment management tasks.
 
-Installing `mamba` in your base conda environment let you reuse it every time you create a new `Conda` environment.
+After installing Conda, you can install `mamba` in your base Conda environment to reuse it whenever creating new environments:
 
-In order to create an environment, type the following commads:  
+`conda install -c conda-forge mamba`
 
-1. `conda install -c conda-forge mamba`  
-2. `mamba env create -f environment.yml --prefix=<path_to_env_dir>`  
+In order to create an environment, type the following commad:
+
+`mamba env create -f environment.yml --prefix=<path_to_env_dir>`  
 
 ### A `Per-interpreter` runner<sup>[2](#f2)</sup>
 
-In order to run an example application using `Per-interpreter GIL` type:  
+To run the sample application using `Per-interpreter GIL`, activate the environment and start the application:
 
 `conda activate <path_to_env_dir>`    
 `python main_qt.py`
 
 
-The application allows to compare python performance using tree different workers:
+The application allows performance comparison among three types of workers:
 1. Thread-based
 2. Process-based
-3. Subinterpreter-based (thread-based with `Per-interpreter GIL`)
+3. Subinterpreter-based (thread-based utilizing `Per-interpreter GIL`)
 
-The implementation of a subinterpreter-based runner can be found in the [subinterpreters module](runner/subinterpreters.py). One can try more sublime callables than just generating a figonacci sequence by modifying the [callables module](job/callables.py).
+For a deeper dive into how the subinterpreter-based runner is implemented, visit the [subinterpreters module](runner/subinterpreters.py). To test different functions than just generating a figonacci sequence, modify the [callables module](job/callables.py).
 
 ### [EXTRA] JS `Web-workers` runner<sup>[2](#f2)</sup>
 
-If you would like to see the JS `Web-workers` performance on the similar task, please type the follwing commands:
+To assess JavaScript's Web Workers performance on a similar task, follow these steps:
 
 `cd js-web-workers`  
 `python -m http.server`  
 
-and go to `http://0.0.0.0:8000/` in the browser.
+Then navigate to `http://0.0.0.0:8000/` in your web browser. 
 
-Communication through message passing is very intuitive. Because of that, I like `JS` even more. On top of that, I didnt realise how much JS is better than python when it comes to computations performance. Now I know why my browser is mining crypto on some web-pages. From the parasite perspective, mining is free and pretty efficient at the same time. BTW. I personally think that crypto mining is a waste of energy. Please spent your (or others) resources in more useful way.
+Message passing in Web Workers offers intuitive and safe communication between threads. On top of that, I didnt realise how much JS is better than python when it comes to computations performance. Now I know why my browser is mining crypto on some web-pages. From the parasite perspective, mining is free and pretty efficient at the same time. BTW. I personally think that crypto mining is a waste of energy. Please spent your (or others) resources in more useful way.
 
 ### [EXTRA] C# `TPL` runner
 
-If you would like to run the example, please make sure that you have a `.NET` environment installed. Then, type the following commands:
+Then navigate to `http://0.0.0.0:8000/` in your web browser. Message passing in Web Workers offers intuitive and safe communication between threads.
+
+### [EXTRA] C# Task Parallel Library (TPL) Runner
+
+Ensure you have the .NET environment installed to run the C# example:
 
 `cd DotNetTPL`  
 `dotnet run Program.cs`
 
 My experience in `C#` is so small that a Junior C# developer could point it doesn't really exist. That's why I'd like to tip my hat to ChatGPT as a thank you for helping me create this example. The example is the same performance test as we did with `Python` and `JS`. I use `BlockingCollection` as a communication mechanism between the main thread and workers threads. The implementation seems to much Javaish for me, as so the whole `C#` is. I guess I do not really like it since I do not deeply understand it.
 
-
 # Footnotes
 
-<a name="f1"></a>*1. Still we need to wait for python extension modules to be compatible with `Per-interpreter GIL` approach. For example, I was not able to import `numpy` in the code running with a subinterpreter. Maybe there is an easy workaround for that, but I didn't spend a lot of time to make it work.*  
-<a name="f2"></a>*2. Sometimes, on my machine with Ubuntu, CPUs are not fully utilize while using `Per-interpreter GIL`. I can only guess that the reason is not good enough context switching, but I didnt make a deeper examination. The same situation we encounter with `Web Workers` and since those two approaches 
-share the same thread scheduler on my machine, I am leaning towards blaming a `thread scheduler` for the situation.*
+<a name="f1"></a>*1. Compatibility with extension modules remains an area for further development under the per-interpreter GIL approach. For instance, importing popular libraries such as `numpy` into subinterpreters has demonstrated some challenges, which may require additional investigation or workarounds.*  
+
+<a name="f2"></a>*2. Observations on a machine running Ubuntu indicate that CPUs sometimes are not be fully utilized when employing the per-interpreter GIL or JavaScript Web Workers. This underutilization might be related to context switching efficiency or thread scheduler behavior.*
 
 # Bilbiography
 <a name="b1"></a>[1] `Python interface for the "intepreters" C API`, https://github.com/jsbueno/extrainterpreters  

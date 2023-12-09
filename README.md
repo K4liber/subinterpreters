@@ -247,7 +247,7 @@ Message passing in Web Workers offers intuitive and safe communication between t
 
 ### [EXTRA] C# Task Parallel Library (TPL) Runner
 
-In the realm of .NET, the Task Parallel Library (TPL) provides a robust framework for multi-core processing, released with version 4.0 of the .NET Framework in 2010.
+In the realm of .NET, the Task Parallel Library (TPL)[[6]](#b6) provides a robust framework for multi-core processing, released with version 4.0 of the .NET Framework in 2010.
 
 Ensure you have the .NET environment installed to run the C# example:
 
@@ -263,32 +263,26 @@ The author experience in C# is so limited that a junior C# developer might sugge
 <a name="f2"></a>*2. Observations on a machine running Ubuntu indicate that CPUs sometimes are not be fully utilized when employing the per-interpreter GIL or JavaScript Web Workers. This underutilization might be related to context switching efficiency or thread scheduler behavior.*
 
 # Bilbiography
-<a name="b1"></a>[1] `Python interface for the "intepreters" C API`, https://github.com/jsbueno/extrainterpreters  
+<a name="b1"></a>[1] Eric Snow, `PEP 684 – A Per-Interpreter GIL`, https://peps.python.org/pep-0684/  
 
 <a name="b2"></a>[2] Neil Coffey, `How threads work: more details`, https://www.javamex.com/tutorials/threads/how_threads_work.shtml
 
-<a name="b3"></a>[3] Eric Snow, `A Per-Interpreter GIL: Concurrency and Parallelism with Subinterpreters`, https://www.youtube.com/watch?v=3ywZjnjeAO4  
+<a name="b3"></a> [3] Sadigrzazada, `The thread scheduler`, https://medium.com/@sadigrzazada20/the-thread-scheduler-4c40c6143009
 
-<a name="b4"></a>[4] Eric Snow, `PEP 554 – Multiple Interpreters in the Stdlib`, https://peps.python.org/pep-0554/  
+<a name="b4"></a> [4] wikipedia, `Interpreter (computing)`, https://en.wikipedia.org/wiki/Interpreter_(computing)
 
-<a name="b5"></a>[5] Eric Snow, `PEP 684 – A Per-Interpreter GIL`, https://peps.python.org/pep-0684/  
+<a name="b5"></a> [5] python.org, `Global Interpreter Lock`, https://docs.python.org/3/glossary.html#term-global-interpreter-lock
 
-<a name="b6"></a>[6] Microsoft, `TPL`, https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/task-parallel-library-tpl
+<a name="b6"></a> [6] Brennan D Baraban, `String Interning`, https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-iii-string-interning-625d3c7319de
 
-<a name="b7"></a>[7] wikipedia, `Parallel Extensions`, https://en.wikipedia.org/wiki/Parallel_Extensions
+<a name="b7"></a>[7] Brennan D Baraban, `Demystifying CPython Shared Objects`, https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-ii-demystifying-cpython-shared-objects-fce1ec86dd63
 
-<a name="b8"></a>[8] wikipedia, `Web worker`, https://en.wikipedia.org/wiki/Web_worker
+<a name="b8"></a>[8] wikipedia, `POWER4`, https://en.wikipedia.org/wiki/POWER4
 
-<a name="b9"></a>[9] https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-ii-demystifying-cpython-shared-objects-fce1ec86dd63
+<a name="b9"></a>[9] Eric Snow, `A Per-Interpreter GIL: Concurrency and Parallelism with Subinterpreters`, https://www.youtube.com/watch?v=3ywZjnjeAO4
 
-<a name="b10"></a>[10] https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-ii-demystifying-cpython-shared-objects-fce1ec86dd63
+<a name="b10"></a>[10] `Python interface for the "intepreters" C API`, https://github.com/jsbueno/extrainterpreters  
 
-<a name="b11"></a>[11] wikipedia, `POWER4`, https://en.wikipedia.org/wiki/POWER4
+<a name="b11"></a>[11] wikipedia, `Web worker`, https://en.wikipedia.org/wiki/Web_worker
 
-<a name="b12"></a> [12] Brennan D Baraban, `String Interning`, https://medium.com/@bdov_/https-medium-com-bdov-python-objects-part-iii-string-interning-625d3c7319de
-
-<a name="b13"></a> [13] Sadigrzazada, `The thread scheduler`, https://medium.com/@sadigrzazada20/the-thread-scheduler-4c40c6143009
-
-<a name="b14"></a> [14] wikipedia, `Interpreter (computing)`, https://en.wikipedia.org/wiki/Interpreter_(computing)
-
-<a name="b15"></a> [15] python.org, `Global Interpreter Lock`, https://docs.python.org/3/glossary.html#term-global-interpreter-lock
+<a name="b12"></a>[12] Microsoft, `TPL`, https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/task-parallel-library-tpl

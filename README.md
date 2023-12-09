@@ -33,7 +33,7 @@ Thread scheduler is a fundamental part of modern operating systems and programmi
 
 #### What is a python interpreter?
 
-Python is an interpreted language. Interpreted languages do not need to be compiled to run. A program called an interpreter processes Python code at runtime, or "on the fly." For a more in-depth explanation of interpreters, you might find the [Interpreter Wikipedia article](#b4) helpful.
+Python is an interpreted language. Interpreted languages do not need to be compiled to run. A program called an interpreter processes Python code at runtime, or "on the fly." For a more in-depth explanation of interpreters, you might find the *Interpreter* Wikipedia article[[4]](#b4) helpful.
 
 #### What is GIL?
 
@@ -58,7 +58,7 @@ In Python, every object has an associated reference count that the garbage colle
 
 #### What is String interning?
 
-For a comprehensive explanation of string interning, please refer to [this article](#b6).
+For a comprehensive explanation of string interning, please refer to *String Interning* article[[6]](#b6).
 
 Python optimizes memory usage by interning strings that are likely to be reused, particularly identifier strings. These strings include:
 

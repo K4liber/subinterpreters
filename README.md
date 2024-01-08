@@ -10,14 +10,14 @@ Those eager to witness the Per-interpreter GIL in action can jump directly to th
 
 ## Technicalities 
 
-Before delving into the Per-interpreter GIL, it is beneficial to grasp the underlying concepts of threads and processes in the python context.
+Before diving into the Per-interpreter GIL, it is beneficial to grasp the underlying concepts of threads and processes in the python context.
 
 
 #### Threads vs. Processes: A Quick Summary*
 
-**For a more detailed explanation, please see the [overview of Threads and Processes](#b2).*
+**For a more detailed explanation, please see the overview of threads and processes[[2]](#b2).*
 
-Threads and Processes are two fundamental units of program execution. While both are integral to how a computer performs tasks, they possess distinct characteristics and fulfill different purposes. 
+Threads and processes are two fundamental units of program execution. While both are integral to how a computer performs tasks, they possess distinct characteristics and fulfill different purposes. 
 
 Threads: Lightweight units of execution that share the same memory space within a process, allowing for efficient task parallelism within a single application.
 
@@ -33,7 +33,7 @@ Thread scheduler is a fundamental part of modern operating systems and programmi
 
 #### What is a python interpreter?
 
-Python is an interpreted language. Interpreted languages do not need to be compiled to run. A program called an interpreter processes Python code at runtime, or "on the fly." For a more in-depth explanation of interpreters, you might find the *Interpreter* Wikipedia article[[4]](#b4) helpful.
+Python is an interpreted language. Interpreted languages do not need to be compiled to run. A program called an interpreter processes Python code at runtime, or "on the fly." For a more in-depth explanation of interpreters, the *Interpreter* Wikipedia article[[4]](#b4) can be helpful.
 
 #### What is GIL?
 
@@ -76,6 +76,9 @@ Unsafe manipulations of shared cached objects and their reference counts can lea
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import partial
+import os
+import threading
+import time
 
 
 @dataclass
@@ -88,9 +91,12 @@ class Person:
         return hex(id(self.last_name))
 
 
-def get_jackson_sibling(name: str) -> Person:
+def create_jackson(first_name: str) -> Person:
+    thread_id = threading.get_native_id()
+    print(f'Creating a person, PID = {os.getpid()}, TID = {thread_id}')
+    time.sleep(1)
     return Person(
-        first_name=name,
+        first_name=first_name,
         last_name='Jackson'
     )
 
@@ -98,25 +104,30 @@ tasks = []
 
 with ThreadPoolExecutor(2) as executor:
     for first_name in ['Michael', 'Freddy']:
-        task = executor.submit(partial(get_jackson_sibling, first_name))
+        task = executor.submit(partial(
+            create_jackson,
+            first_name=first_name
+        ))
         tasks.append(task)
     
-siblings = [task.result() for task in tasks]
+jakcson_siblings = [task.result() for task in tasks]
 
-for sibling in siblings:
-    print(f'Hello {sibling.first_name}!')
+for jakcson_sibling in jakcson_siblings:
+    print(f'Hello {jakcson_sibling.first_name} {jakcson_sibling.last_name}!')
 
-if siblings[0].last_name_object_address == siblings[1].last_name_object_address:
-    address = siblings[0].last_name_object_address
+if jakcson_siblings[0].last_name_object_address == jakcson_siblings[1].last_name_object_address:
+    address = jakcson_siblings[0].last_name_object_address
     print(f'Same memory address detected: {address}')
 ```
 
 Output:
 
 ```
-Hello Michael!
-Hello Freddy!
-Same memory address detected: 0x7fb1080be9f0
+Creating a person, PID = 7112, TID = 7113
+Creating a person, PID = 7112, TID = 7114
+Hello Michael Jackson!
+Hello Freddy Jackson!
+Same memory address detected: 0x7f6f816eb720
 ```
 
 As demonstrated, Python sometimes reuses objects for efficiency reasons, such as with string interning, reducing memory usage.
@@ -152,11 +163,11 @@ With ongoing efforts and multiple supporting PEPs, Python 3.12 has finally broug
 
 #### Real-Life Applications of Per-Interpreter GIL
 
-The motivation for introducing the per-interpreter GIL, and the benefits it provides, are outlined in detail [here on PEP 684](https://peps.python.org/pep-0684/#motivation).
+The motivation for introducing the per-interpreter GIL, and the benefits it provides, are outlined in detail *Motivation* section of PEP 684[[9]](#b9).
 
 Consider, for instance, a server tasked with handling complex requests where each request involves numerous computationally intensive operations that could be parallelized. Instead of spawning a separate process for each operation, which introduce considerable communication overhead, the Per-interpreter GIL could optimize performance by reducing this overhead.
 
-Eric Snow presented an informative benchmark at PyCon US 2023[[9]](#b9), showcasing the potential of the per-interpreter GIL. For a comprehensive review, watching the full presentation is recommended.
+Eric Snow presented an informative benchmark at PyCon US 2023[[10]](#b10) of his work, showcasing the potential of the per-interpreter GIL. For a comprehensive review, watching the full presentation is recommended.
 
 Summary of the Presentation:
 Eric Snow presented significant performance improvements under the per-interpreter GIL architecture.
@@ -169,7 +180,7 @@ Note: Some results presented (as the one presented on the Figure 3) may seem ext
 
 #### Alternatives for Multi-core Utilization in a Single Python Process
 
-For a discussion of alternative methods for leveraging multiple cores within a single Python process, refer to the rationale section of [PEP 684](https://peps.python.org/pep-0684/#rationale).
+For a discussion of alternative methods for leveraging multiple cores within a single Python process, refer to the *Rationale* section of PEP 684[[11]](#b11).
 
 #### What have we learned?
 
@@ -183,7 +194,7 @@ For a discussion of alternative methods for leveraging multiple cores within a s
 
 A simple QT-based GUI application is provided in this repository to demonstrate using the subinterpreter (thread running a seperate interpreter) as a unit of execution. You are encouraged to explore and experiment with the example code.
 
-An implementation of a Python interface for the interpreters C API already exists[[10]](#b10), but it was more complex than necessary for implementing the example (the example just executes a set of pure functions). Therefore, a more streamlined version has been crafted for the purpose of this article.
+An implementation of a Python interface for the interpreters C API already exists[[12]](#b12), but it was more complex than necessary for implementing the example (the example just executes a set of pure functions). Therefore, a more streamlined version has been crafted for the purpose of this article.
 
 ### Environment preparation
 #### Install pyqt on Debian-Based Linux Distributions
@@ -226,17 +237,17 @@ The application allows performance comparison among three types of workers:
 2. Process-based
 3. Subinterpreter-based (thread-based utilizing Per-interpreter GIL)
 
-For a deeper dive into how the subinterpreter-based runner is implemented, visit the [subinterpreters module](runner/subinterpreters.py). To test different functions than just generating a figonacci sequence, modify the [callables module](job/callables.py).
+For a deeper dive into how the subinterpreter-based runner is implemented, visit the module [runner/subinterpreters.py](runner/subinterpreters.py). To test different functions than just generating a figonacci sequence, modify the module [job/callables.py](job/callables.py).
 
 ### [EXTRA] JS Web-workers runner<sup>[2](#f2)</sup>
 
 JavaScript, much like Python, is an interpreted language. In JavaScript, concurrency can be achieved using Web Workers. These are scripts that run in the background and operate independently of the main execution thread.
 
-Introduced on April 3, 2009[[11]](#b11), Web Workers offer true concurrency for CPU-bound tasks by utilizing multiple cores. Each worker runs in a separate thread while staying within a single process.
+Introduced on April 3, 2009[[13]](#b13), Web Workers offer true concurrency for CPU-bound tasks by utilizing multiple cores. Each worker runs in a separate thread while staying within a single process.
 
 Python allows threads to communicate using shared memory or thread-safe structures. In contrast, Web Workers rely solely on message passing for communication, reducing the risk of race conditions and simplifying state management but potentially less efficient for specific types of data interchange.
 
-To assess JavaScript's Web Workers performance on the same task we did we Python, follow these steps:
+To assess JavaScript's Web Workers performance on the same task we did with Python, follow these steps:
 
 `cd js-web-workers`  
 `python -m http.server`  
@@ -247,7 +258,7 @@ Message passing in Web Workers offers intuitive and safe communication between t
 
 ### [EXTRA] C# Task Parallel Library (TPL) Runner
 
-In the realm of .NET, the Task Parallel Library (TPL)[[12]](#b12) provides a robust framework for multi-core processing, released with version 4.0 of the .NET Framework in 2010.
+In the realm of .NET, the Task Parallel Library (TPL)[[14]](#b14) provides a robust framework for multi-core processing, released with version 4.0 of the .NET Framework in 2010.
 
 Ensure you have the .NET environment installed to run the C# example:
 
@@ -281,8 +292,12 @@ The author experience in C# is so limited that a junior C# developer might sugge
 
 <a name="b9"></a>[9] Eric Snow, `A Per-Interpreter GIL: Concurrency and Parallelism with Subinterpreters`, https://www.youtube.com/watch?v=3ywZjnjeAO4
 
-<a name="b10"></a>[10] `Python interface for the "intepreters" C API`, https://github.com/jsbueno/extrainterpreters  
+<a name="b10"></a>[10] Eric Snow, `PEP 684, Motivation`, https://peps.python.org/pep-0684/#motivation
 
-<a name="b11"></a>[11] wikipedia, `Web worker`, https://en.wikipedia.org/wiki/Web_worker
+<a name="b11"></a>[11] Eric Snow, `PEP 684, Rationale`, https://peps.python.org/pep-0684/#rationale
 
-<a name="b12"></a>[12] Microsoft, `TPL`, https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/task-parallel-library-tpl
+<a name="b12"></a>[12] `Python interface for the "intepreters" C API`, https://github.com/jsbueno/extrainterpreters  
+
+<a name="b13"></a>[13] wikipedia, `Web worker`, https://en.wikipedia.org/wiki/Web_worker
+
+<a name="b14"></a>[14] Microsoft, `TPL`, https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/task-parallel-library-tpl

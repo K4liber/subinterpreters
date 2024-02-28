@@ -5,10 +5,29 @@ from typing import Any
 from PyQt5.QtWidgets import (QApplication, QComboBox, QHBoxLayout, QLabel,
                              QLineEdit, QMainWindow, QProgressBar, QPushButton,
                              QVBoxLayout, QWidget)
+from PyQt5 import QtCore
 
 import config
 from job.callables import get_available_callables, get_callable
 from runner.factory import RUNNER_TYPE, get_runner
+
+
+class RunnerSignals(QtCore.QObject):
+    finished = QtCore.pyqtSignal(object)
+
+
+class RunnerRunnable(QtCore.QRunnable):
+
+    def __init__(self, func, args=None, kwargs=None):
+        super().__init__()
+        self.setAutoDelete(True)
+        self.func = func
+        self.args = args if args else []
+        self.kwargs = kwargs if kwargs else {}
+
+    @QtCore.pyqtSlot()
+    def run(self):
+        self.func(*self.args, **self.kwargs)
 
 
 class MainWindow(QMainWindow):
@@ -103,6 +122,8 @@ class MainWindow(QMainWindow):
         self._central_widget.setLayout(self._layout)
         self.setCentralWidget(self._central_widget)
         self._time_start = None
+        self.signals = RunnerSignals()
+        self.signals.finished.connect(self.on_runner_finished)
 
     def _clear(self) -> None:
         for progress_bar in self._progress_bars:
@@ -119,10 +140,15 @@ class MainWindow(QMainWindow):
             worker_id: int | str | None = None,
             result: Any = None
         ) -> None:
+        self.signals.finished.emit((worker_id, result))
+
+    def on_runner_finished(self, args: tuple[int | str | None, Any]) -> None:
+        worker_id, result = args
+
         if worker_id is not None:
             print(f'Task completed. Worker id = {worker_id}, result = {result}')
         else:
-            print(f'Tasks started successfully.')
+            print('Tasks started successfully.')
 
         if worker_id is not None:
             self._advance_progress_bar(worker_index=int(worker_id))
@@ -151,26 +177,36 @@ class MainWindow(QMainWindow):
             for _ in range(config.NUMBER_OF_JOBS)
         ]
         print(f'Running worker "{runner.runner_type}" with {runner.no_workers} workers.')
-        runner.start(
-            callables_list=callables_list,
-            callback=self._callback
+        runnable = RunnerRunnable(
+            func=partial(
+                runner.start,
+                callables_list=callables_list,
+                callback=self._callback
+            )
         )
-        overall_time = str(int((time.time() - self._time_start) * 100)/100)
-        self._timing_overall_value.setText(overall_time)
-        print(f'All tasks completed successfully in {overall_time} seconds.')
-        self._worker_type_combo.setDisabled(False)
-        self._start_button.setDisabled(False)
-        self._start_button.setText("Start")
-        self._function_selection_combo.setDisabled(False)
-        self._function_args_text_area.setDisabled(False)
+        QtCore.QThreadPool.globalInstance().start(runnable)
 
     def _advance_progress_bar(self, worker_index: int | None = None) -> None:
+        global_progress_bar_index = len(self._progress_bars) - 1
+        
         if worker_index is None:
-            worker_index = len(self._progress_bars) - 1
+            worker_index = global_progress_bar_index
 
         progress_bar = self._progress_bars[worker_index]
         current_value = progress_bar.value()
         progress_bar.setValue(int(current_value + 1))
+        global_progress_bar = self._progress_bars[global_progress_bar_index]
+        # If all tasks finished
+        if global_progress_bar.value() == config.NUMBER_OF_JOBS:
+            init_time = self._timing_init_value.text()
+            overall_time = str(int((time.time() - self._time_start) * 100)/100)
+            self._timing_overall_value.setText(overall_time)
+            print(f'All tasks completed successfully in {overall_time} [s]. Init time: {init_time} [s].')
+            self._worker_type_combo.setDisabled(False)
+            self._start_button.setDisabled(False)
+            self._start_button.setText("Start")
+            self._function_selection_combo.setDisabled(False)
+            self._function_args_text_area.setDisabled(False)
 
     def _create_progress_bars(self, number_of_workers: int) -> None:
         for _ in range(number_of_workers):

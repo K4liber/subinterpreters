@@ -219,12 +219,13 @@ In order to create an environment, type the following commad:
 
 ### A `Per-interpreter` runner<sup>[2](#f2)</sup>
 
-To run the sample application using Per-interpreter GIL, activate the environment: 
+To run the sample application using `Per-interpreter GIL`, activate the environment:
 
 `conda activate <path_to_env_dir>`    
 
-and start the application:
-
+In case you work on Windows, please provide the `QT_PLUGIN_PATH` env variable before executing the script:
+`cmd /C "set QT_PLUGIN_PATH=<path_to_env_dir>\Library\plugins\platforms && python main_qt.py"`
+otherwise just type:
 `python main_qt.py`
 
 One can face an issue with loading the QT plugins. To solve that, please set the 

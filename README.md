@@ -1,11 +1,5 @@
 # Utilizing Multiple Cores in a Single Python Process with Per-interpreter GIL
 
-```
-conda activate C:\Users\JBIEL\Desktop\projects\conda_envs\subinterpreters_2
-
-cmd /C "set QT_PLUGIN_PATH=C:\Users\JBIEL\Desktop\projects\conda_envs\subinterpreters_2\Library\plugins\platforms && python main_qt.py"
-```
-
 ## Intro
 
 This repository presents a practical exploration of a relatively new feature in Python known as the `Per-interpreter GIL`[[5]](#b5). The `Per-interpreter GIL` enables the utilization of multiple cores within a single Python process.
@@ -226,9 +220,13 @@ In order to create an environment, type the following commad:
 
 ### A `Per-interpreter` runner<sup>[2](#f2)</sup>
 
-To run the sample application using `Per-interpreter GIL`, activate the environment and start the application:
+To run the sample application using `Per-interpreter GIL`, activate the environment:
 
 `conda activate <path_to_env_dir>`    
+
+In case you work on Windows, please provide the `QT_PLUGIN_PATH` env variable before executing the script:
+`cmd /C "set QT_PLUGIN_PATH=<path_to_env_dir>\Library\plugins\platforms && python main_qt.py"`
+otherwise just type:
 `python main_qt.py`
 
 

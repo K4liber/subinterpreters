@@ -8,3 +8,4 @@ dependencies:
   - python=3.12.0
   - pyqt=5.15
   - numpy=1.26
+  - psutil=5.9.0

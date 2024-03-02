@@ -20,7 +20,7 @@ selected_function = \
 function_args = \
     sys.argv[3:] \
     if len(sys.argv) > 3 \
-    else [32]
+    else [34]
 
 def _callback(
         worker_id: int | None = None,

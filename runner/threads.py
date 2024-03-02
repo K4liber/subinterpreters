@@ -1,13 +1,13 @@
-from concurrent.futures import Future, ThreadPoolExecutor, wait
+from concurrent.futures import Future, ThreadPoolExecutor
 from functools import partial
 from threading import current_thread
 from typing import Any, Callable
 
-from runner.interface import RunnerInterface
+from runner.interface import RunnerInterface, CALLBACK_TYPE
 
 
 def thread_callback(
-        callback: Callable[[int, Any], None],
+        callback: CALLBACK_TYPE,
         future: Future,
     ) -> None:
     if future.exception():
@@ -28,7 +28,7 @@ class RunnerThreads(RunnerInterface):
     def start(
         self,
         callables_list: list[Callable[[], Any]],
-        callback: Callable[[int, Any], Any]
+        callback: CALLBACK_TYPE
     ) -> None:
 
         with ThreadPoolExecutor(self._no_workers) as executor:

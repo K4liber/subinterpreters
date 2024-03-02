@@ -7,11 +7,11 @@ from typing import Any, Callable
 
 import _xxsubinterpreters as interpreters
 
-from runner.interface import RunnerInterface
+from runner.interface import RunnerInterface, CALLBACK_TYPE
 
 
 def _run(
-        callback: Callable[[int, Any], Any],
+        callback: CALLBACK_TYPE,
         subinterpreter_id: int,
         callable: Callable[[], Any]
     ) -> None:
@@ -63,7 +63,7 @@ class RunnerSubinterpreters(RunnerInterface):
     def start(
         self,
         callables_list: list[Callable[[], Any]],
-        callback: Callable[[int, Any], Any]
+        callback: CALLBACK_TYPE
     ) -> None:
         callables_length = len(callables_list)
         subinterpreter_ids = [

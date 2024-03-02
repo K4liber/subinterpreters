@@ -1,6 +1,10 @@
 from abc import ABCMeta, abstractmethod
+import os
 from typing import Any, Callable
 
+import psutil
+
+CALLBACK_TYPE = Callable[[int, Any, dict | None], Any]
 
 class RunnerInterface(metaclass=ABCMeta):
     def __init__(
@@ -15,7 +19,7 @@ class RunnerInterface(metaclass=ABCMeta):
     def start(
         self,
         callables_list: list[Callable[[], Any]],
-        callback: Callable[[int, Any], Any]
+        callback: CALLBACK_TYPE
     ) -> None:
         ...
     
@@ -26,3 +30,9 @@ class RunnerInterface(metaclass=ABCMeta):
     @property
     def runner_type(self) -> str:
         return self._runner_type
+    
+    @staticmethod
+    def get_memory_usage(pid: int | None = None) -> dict[int, float] | None:
+        pid = pid if pid is not None else os.getpid()
+        process = psutil.Process(pid=pid)
+        return {pid: process.memory_info().rss / 1024 ** 2}

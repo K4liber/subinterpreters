@@ -165,7 +165,7 @@ With ongoing efforts and multiple supporting PEPs, Python 3.12 has finally broug
 
 The motivation for introducing the per-interpreter GIL, and the benefits it provides, are outlined in detail *Motivation* section of PEP 684[[9]](#b9).
 
-Consider, for instance, a server tasked with handling complex requests where each request involves numerous computationally intensive operations that could be parallelized. Instead of spawning a separate process for each operation, which introduce considerable communication overhead, the Per-interpreter GIL could optimize performance by reducing this overhead.
+Consider, for instance, a server tasked with handling complex requests where each request involves numerous computationally intensive operations that could be parallelized. Instead of spawning a separate process for each operation, which introduce considerable overhead (processes intialization/closing, communication and memory usage), the Per-interpreter GIL could optimize performance by reducing this overhead.
 
 Eric Snow presented an informative benchmark at PyCon US 2023[[10]](#b10) of his work, showcasing the potential of the per-interpreter GIL. For a comprehensive review, watching the full presentation is recommended.
 
@@ -227,11 +227,6 @@ In case you work on Windows, please provide the `QT_PLUGIN_PATH` env variable be
 `cmd /C "set QT_PLUGIN_PATH=<path_to_env_dir>\Library\plugins\platforms && python main_qt.py"`
 otherwise just type:
 `python main_qt.py`
-
-One can face an issue with loading the QT plugins. To solve that, please set the 
-following environmental variable before running the Python script:
-
-`QT_PLUGIN_PATH=<path_to_env_dir>\Lib\site-packages\PyQt5\Qt5\plugins`
 
 The application allows performance comparison among three types of workers:
 1. Thread-based

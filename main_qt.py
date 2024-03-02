@@ -76,7 +76,7 @@ class MainWindow(QMainWindow):
         function_args_label = QLabel('Function arguments:')
         self._function_args_text_area = QLineEdit()
         self._function_args_text_area.setFixedSize(188, 25)
-        self._function_args_text_area.setText('32')
+        self._function_args_text_area.setText('34')
         function_args_layout.addWidget(function_args_label)
         function_args_layout.addWidget(self._function_args_text_area)
         function_args_widget.setLayout(function_args_layout)
@@ -186,8 +186,9 @@ class MainWindow(QMainWindow):
         ]
         main_process_pid = os.getpid()
         print(
-            f'Running worker "{runner.runner_type}" with {runner.no_workers} workers. '
-            f'Main process PID = {main_process_pid}.'
+            f'Starting runner "{runner.runner_type}" with {runner.no_workers} workers.\n'
+            f'Number of tasks: {config.NUMBER_OF_JOBS}\n'
+            f'Main process PID = {main_process_pid}\n'
         )
         runnable = RunnerRunnable(
             func=partial(

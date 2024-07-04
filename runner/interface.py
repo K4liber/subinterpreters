@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 import os
 from typing import Any, Callable
 
-import psutil
+# import psutil
 
 CALLBACK_TYPE = Callable[[int, Any, dict | None], Any]
 

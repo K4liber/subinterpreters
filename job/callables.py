@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from task.fibonacci import fibonacci
-from task.test_numpy import test_numpy
+# from task.test_numpy import test_numpy
 
 @dataclass(frozen=True)
 class _Callables:
@@ -14,7 +14,7 @@ CALLABLES = _Callables()
 
 _name_to_callable  = {
     CALLABLES.FIBONACCI: fibonacci,
-    CALLABLES.TEST_NUMPY: test_numpy
+    # CALLABLES.TEST_NUMPY: test_numpy
 }
 
 def get_available_callables() -> list[str]:

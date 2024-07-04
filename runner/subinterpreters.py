@@ -5,7 +5,7 @@ from textwrap import dedent
 from threading import current_thread
 from typing import Any, Callable
 
-import _xxsubinterpreters as interpreters
+# import _xxsubinterpreters as interpreters
 
 from runner.interface import RunnerInterface, CALLBACK_TYPE
 

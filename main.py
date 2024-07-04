@@ -11,7 +11,7 @@ from job.callables import get_callable, CALLABLES
 runner_type = \
     sys.argv[1].upper() \
     if len(sys.argv) > 1 \
-    else RUNNER_TYPE.SUBINTERPRETER
+    else RUNNER_TYPE.THREAD
 runner = get_runner(runner_type=runner_type)
 selected_function = \
     get_callable(sys.argv[2]) \

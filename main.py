@@ -26,7 +26,10 @@ def _callback(
         worker_id: int | None = None,
         result: Any = None
     ) -> None:
-    print(f'Worker id: {worker_id}, result: {result}')
+    if worker_id is None:
+        print(f'Execution started with runner {runner_type}')
+    else:
+        print(f'Worker id: {worker_id}, result: {result}')
 
 
 start = time.time()

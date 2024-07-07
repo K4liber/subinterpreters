@@ -1,4 +1,4 @@
-name: subinterpreters_v12.4
+name: subinterpreters_python_3.12.4
 
 channels:
   - defaults

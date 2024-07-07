@@ -2,6 +2,8 @@ from abc import ABCMeta, abstractmethod
 import os
 from typing import Any, Callable
 
+from env import ENV
+
 import psutil
 
 CALLBACK_TYPE = Callable[[int, Any, dict | None], Any]
@@ -33,6 +35,9 @@ class RunnerInterface(metaclass=ABCMeta):
     
     @staticmethod
     def get_memory_usage(pid: int | None = None) -> dict[int, float] | None:
-        pid = pid if pid is not None else os.getpid()
-        process = psutil.Process(pid=pid)
-        return {pid: process.memory_info().rss / 1024 ** 2}
+        if not ENV.PYTHON_313:
+            pid = pid if pid is not None else os.getpid()
+            process = psutil.Process(pid=pid)
+            return {pid: process.memory_info().rss / 1024 ** 2}
+        else:
+            raise NotImplementedError(f'get_memory_usage() not implemented for python3.13')
